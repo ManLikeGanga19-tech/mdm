@@ -2,12 +2,13 @@
 
 Read this, `CLAUDE.md`, and `docs/ARCHITECTURE.md` before starting work. Update it at the end of every session.
 
-_Last updated: 2026-10-14_
+_Last updated: 2026-10-15_
 
 ## Current phase
-**Phase 1 — Device spike.** The plan below has been proposed and is waiting for approval. No code has been written yet.
+**Phase 1 — Device spike.** Plan approved 2026-10-15. Spike app is written and builds; **device testing not started**
+(scheduled for 2026-10-16 on a non-RugKing test phone). Procedure and results table: `docs/spike-report.md`.
 
-## Decisions made (Phase 0)
+## Decisions made
 | Topic | Decision |
 |---|---|
 | Project type | Standalone production project, repo root = this folder |
@@ -19,32 +20,37 @@ _Last updated: 2026-10-14_
 | Hotspot | Controlled from the admin UI per group / per device: block, or allow and monitor |
 | Git | Commit and push as the repo owner only; no Claude co-author/attribution (CLAUDE.md rule 10) |
 | GitHub | https://github.com/ManLikeGanga19-tech/mdm (branch `main`) |
+| Fleet | Ulefone RugKing, Android 13–15 → agent `minSdk = 33` |
+| Package name | `com.noahport.mdm.agent` (company "Noahport"). **Permanent** once phones are enrolled (rule 6) |
+| Agent toolchain | AGP 9.2.1 (matches the installed Android Studio), Gradle 9.8.1 wrapper (checksum-verified), JDK 21 from Studio's `jbr`, compileSdk/targetSdk 36 |
+| Provisioning | Agent keeps system apps enabled (`EXTRA_PROVISIONING_LEAVE_ALL_SYSTEM_APPS_ENABLED`), in both the QR payload and the provisioning-mode result |
 
-## Phase 1 plan (pending approval)
-Goal: prove the risky Android parts on one real RugKing before building the backend.
-1. Minimal Kotlin project in `agent-app/` with a `DeviceAdminReceiver`.
-2. Make it device owner on a freshly reset phone with `adb shell dpm set-device-owner <pkg>/.AdminReceiver` (quicker than QR for testing).
-3. Test screen with a button per check, logging results:
-   - Hotspot block/unblock with `DISALLOW_CONFIG_TETHERING`, including whether an active hotspot gets turned off
-   - `NetworkStatsManager` returns all-UID + `UID_TETHERING` stats as device owner, without usage-access permission
-   - Network logging (`setNetworkLoggingEnabled`) delivers batches
-   - `lockNow`, `reboot`, app blocking (`setApplicationHidden` / `setPackagesSuspended`)
-4. Real QR provisioning test, with the APK hosted temporarily as a GitHub release asset.
-5. Leave the phone for 24 hours to see whether Ulefone battery management kills WorkManager jobs.
-6. Write pass/fail results to `docs/spike-report.md`.
+## Phase 1 progress
+1. ✅ Kotlin project in `agent-app/`: `AdminReceiver`, Android 12+ provisioning activities (`ProvisioningModeActivity`, `PolicyComplianceActivity`), test screen `MainActivity`, `SoakWorker`, `SpikeLog` (writes `files/spike.log`)
+2. ⏳ Device owner via `adb shell dpm set-device-owner com.noahport.mdm.agent/.AdminReceiver`
+3. ⏳ Run the checks (hotspot, usage/tethering stats, network logging, lock, reboot, app suspend/hide)
+4. ⏳ QR provisioning (`agent-app/scripts/provisioning-payload.sh` builds the JSON; tested against the debug APK)
+5. ⏳ 24 h soak. **Must be repeated on a real RugKing**: the test phone can't show Ulefone battery behaviour
+6. ⏳ Fill in `docs/spike-report.md`
+
+API facts confirmed from the SDK 36.1 sources (`Sdk/sources/android-36.1`):
+- `DISALLOW_CONFIG_TETHERING` set by a device owner applies globally; Android 9+ turns off active tethering when it is set.
+- `NetworkStatsManager`: device owner apps get usage for all users/UIDs, including tethering, without `PACKAGE_USAGE_STATS`; `querySummary(type, null, …)` covers all networks of that type.
+- Network logging needs every user/profile affiliated (fine on a fully managed phone with one user).
 
 ## Waiting on the user
-- [ ] Approval of the Phase 1 plan
-- [ ] RugKing exact model + Android version (sets `minSdk`)
-- [ ] Final package name (e.g. `com.<company>.mdm.agent`); the spike may use a temporary one
-- [ ] Test phone that can be factory reset, with USB debugging enabled
+- [ ] Run the spike on the test phone (2026-10-16); then a RugKing for provisioning, hotspot and the soak
+- [ ] Exact RugKing model(s) for the report
 - [ ] Domain name for the VPS (needed by Phase 2/6)
 
 ## Local environment (Windows PC)
-- Android Studio: `C:\Program Files\Android\Android Studio` (bundled JDK in `jbr\`)
-- Android SDK: `C:\Users\ADMIN\AppData\Local\Android\Sdk` (adb in `platform-tools\`)
+- Android Studio 2025.3.4: `C:\Program Files\Android\Android Studio` (bundled JDK 21 in `jbr\`)
+- Android SDK: `C:\Users\ADMIN\AppData\Local\Android\Sdk` (adb in `platform-tools\`; platforms 36, 36.1)
+- Build agent: `cd agent-app && JAVA_HOME="/c/Program Files/Android/Android Studio/jbr" ./gradlew assembleDebug lintDebug` (Git Bash)
+- `agent-app/local.properties` (gitignored) must escape the path: `sdk.dir=C\:\\Users\\ADMIN\\AppData\\Local\\Android\\Sdk`
 - Docker installed; no local PHP/Composer/Postgres/Redis (everything server-side runs in Docker)
-- Node 22 installed
+- Node 22 installed (used for `npx qrcode` to render provisioning QR codes)
 
 ## Session log
 - 2026-10-14: Wrote the docs. Found the AMAPI permissible-usage restriction and switched the design to our own DPC. Hosting, alerts, and hotspot decisions made. Proposed the Phase 1 plan.
+- 2026-10-15: Phase 1 approved. Fleet is Android 13–15; package `com.noahport.mdm.agent`. Built the spike app, QR payload script and spike-report template; `assembleDebug` + `lintDebug` pass. Device testing is next.

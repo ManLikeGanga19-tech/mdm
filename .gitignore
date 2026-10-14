@@ -1,0 +1,31 @@
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+*.json.key
+sa.json
+*service-account*.json
+/secrets/
+
+# PHP
+/vendor/
+/storage/*.key
+/node_modules/
+/public/build/
+/public/hot
+.phpunit.result.cache
+
+# Android companion app
+companion-app/.gradle/
+companion-app/build/
+companion-app/app/build/
+companion-app/local.properties
+companion-app/.idea/
+*.keystore
+*.jks
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

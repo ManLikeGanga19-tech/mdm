@@ -1,159 +1,194 @@
 # Architecture — Company Phone MDM
 
 ## 1. Goals
-- Enroll company-owned Ulefone RugKing phones as **fully managed** devices.
-- Enforce policies (hotspot control, app allow/block, security settings).
-- Monitor: device status, installed apps, per-app data usage, hotspot (tethering) usage, network activity (DNS/TCP logs).
+- Enroll company-owned Ulefone RugKing phones as **fully managed** (device owner) devices.
+- Enforce policies: hotspot control (block, or allow and monitor, set from the admin UI), app allow/block, security restrictions.
+- Monitor: device status, installed apps, per-app data usage, hotspot (tethering) usage, network activity (DNS/connect logs).
 - Remote actions: lock, reboot, reset password, wipe.
-- Admin dashboard with reports and alerts (for example "device used > X GB hotspot this week").
+- Admin dashboard with reports and email alerts (for example "device used > X GB hotspot this week").
 
 Non-goals: reading message content, personal-app spying, managing personal (BYOD) phones.
+
+### Why not Google's Android Management API
+AMAPI's permissible-usage policy prohibits "solutions developed and used exclusively for first party in-house
+applications" (developers.google.com/android/management/permissible-usage). This system is in-house only, so it
+uses its **own Device Policy Controller (DPC)** app and Android's `DevicePolicyManager` APIs directly. No Google
+approval or quota is involved. Google is used only for Firebase Cloud Messaging (wake-up pushes).
 
 ## 2. Components
 
 | Component | Owner | Responsibility |
 |---|---|---|
-| Android Device Policy | Google (on phone) | Applies AMAPI policies, sends status reports |
-| Companion app (`companion-app/`) | Us, Kotlin | Collects per-app + tethering usage via `NetworkStatsManager`, posts to backend |
-| Android Management API | Google Cloud | Enterprise, policies, devices, enrollment tokens, commands |
-| Cloud Pub/Sub | Google Cloud | Pushes device events to our webhook |
-| PHP backend (MDM module) | Us | AMAPI client, webhook, ingest API, jobs, DB, admin UI |
-| Redis | Us | Queue for webhook/ingest processing |
-| Database | Us | Devices, usage, logs, commands, alerts |
+| MDM Agent (`agent-app/`) | Us, Kotlin | Device owner DPC: applies policy, runs commands, collects status, app inventory, usage, network logs; uploads to backend |
+| Backend (`backend/`) | Us, Laravel | Device API, enrollment, policies, command queue, jobs, DB, admin UI (Filament), email alerts |
+| Firebase Cloud Messaging | Google (free) | High-priority data message that tells the agent to check in now |
+| PostgreSQL | Us | Devices, policies, commands, telemetry, alerts |
+| Redis | Us | Queues (Horizon), cache, rate limiting |
+| Zoho Mail (SMTP) | Zoho | Alert and admin emails |
+| Contabo VPS | Us | Runs everything in Docker Compose behind a TLS reverse proxy |
 
 ## 3. Data flows
 
-**Control:** Admin UI → PHP `AmapiService` → AMAPI → Android Device Policy on phone.
+**Enrollment:** Admin creates an enrollment token in the UI → backend renders a provisioning QR code → phone is
+factory reset, tapped 6× on the welcome screen, scans QR → Android downloads the agent APK from our server, verifies
+its signing-certificate checksum, makes it device owner → agent calls `POST /api/device/v1/enroll` with the token from
+the admin-extras bundle → backend returns a per-device credential.
 
-**Status:** Phone → AMAPI → Pub/Sub topic → push to `POST /webhooks/amapi` → store raw message → queued job → DB.
+**Control:** Admin changes policy or issues a command → backend stores it → `PushService` sends an FCM data message →
+agent calls `POST /api/device/v1/checkin` → receives current policy version and pending commands → applies them →
+reports results. A WorkManager periodic check-in (about 15 min) is the fallback when FCM is delayed.
 
-**Usage:** Companion app → `POST /api/companion/v1/usage` (Bearer device token) → queued job → `usage_samples`.
+**Telemetry:** Agent batches status, app inventory, usage samples, and network logs → `POST /api/device/v1/*` →
+stored raw, processed by queued jobs → tables.
 
-**Reporting:** Admin UI reads DB → tables, charts, alerts.
+**Reporting:** Admin UI reads DB → tables, ECharts charts, alert rules → Zoho Mail.
 
-## 4. AMAPI setup (one-time)
-1. GCP project, enable **Android Management API** and **Cloud Pub/Sub**.
-2. Service account with AMAPI access; key stored outside the repo (secrets manager or server path in `.env`).
-3. Create enterprise via `signupUrls.create` → `enterprises.create` (Google's AMAPI quickstart can do this).
-4. Create Pub/Sub topic; grant `android-cloud-policy@system.gserviceaccount.com` the Publisher role on it.
-5. Set the topic on the enterprise (`pubsubTopicName`, `enabledNotificationTypes`: `ENROLLMENT`, `STATUS_REPORT`, `COMMAND`, `USAGE_LOGS`).
-6. Create a **push subscription** to `https://<backend>/webhooks/amapi` with OIDC authentication enabled.
+## 4. Provisioning QR (fully managed)
+QR payload is JSON with at least (verify names against developer.android.com `DevicePolicyManager` constants):
+- `android.app.extra.PROVISIONING_DEVICE_ADMIN_COMPONENT_NAME` — agent's `DeviceAdminReceiver`
+- `android.app.extra.PROVISIONING_DEVICE_ADMIN_PACKAGE_DOWNLOAD_LOCATION` — HTTPS URL of the agent APK on our server
+- `android.app.extra.PROVISIONING_DEVICE_ADMIN_SIGNATURE_CHECKSUM` — URL-safe base64 SHA-256 of the signing cert
+- `android.app.extra.PROVISIONING_ADMIN_EXTRAS_BUNDLE` — `{ "api_base_url": ..., "enrollment_token": ... }`
+- Optional Wi-Fi extras for first-boot network.
 
-## 5. Base policy (starting point — verify fields against current docs)
-```json
-{
-  "deviceConnectivityManagement": { "tetheringSettings": "DISALLOW_ALL_TETHERING" },
-  "statusReportingSettings": {
-    "applicationReportsEnabled": true,
-    "deviceSettingsEnabled": true,
-    "softwareInfoEnabled": true,
-    "networkInfoEnabled": true,
-    "hardwareStatusEnabled": true,
-    "powerManagementEventsEnabled": true
-  },
-  "usageLog": { "enabledLogTypes": ["NETWORK_ACTIVITY_LOGS"] },
-  "factoryResetDisabled": true,
-  "addUserDisabled": true,
-  "applications": [
-    {
-      "packageName": "com.company.mdmcompanion",
-      "installType": "FORCE_INSTALLED",
-      "managedConfiguration": { "api_base_url": "https://<backend>", "device_token": "<per-device>" }
-    }
-  ]
-}
-```
-Hotspot may be allowed per policy for some staff; usage is still tracked by the companion app.
+Android 12+ requires the agent to handle `ACTION_GET_PROVISIONING_MODE` and `ACTION_ADMIN_POLICY_COMPLIANCE`.
+
+## 5. Policy model
+Policies are our own JSON schema, versioned, assigned to a **device group**, with optional **per-device overrides**
+(for example hotspot on for one phone). The backend resolves group + overrides into one effective policy
+(`PolicyBuilder`); the agent applies it (`PolicyEnforcer`) and reports the applied version.
+
+Starting policy fields → Android mechanism (verify each during Phase 1 spike):
+
+| Policy field | Android mechanism |
+|---|---|
+| `hotspot`: `blocked` / `allowed` | `UserManager.DISALLOW_CONFIG_TETHERING` user restriction |
+| `factory_reset_disabled` | `DISALLOW_FACTORY_RESET` |
+| `add_user_disabled` | `DISALLOW_ADD_USER` |
+| `safe_boot_disabled` | `DISALLOW_SAFE_BOOT` |
+| `unknown_sources_disabled` | `DISALLOW_INSTALL_UNKNOWN_SOURCES_GLOBALLY` |
+| `blocked_apps[]` | `setApplicationHidden` / `setPackagesSuspended` |
+| `network_logging` | `setNetworkLoggingEnabled` + `onNetworkLogsAvailable` |
+| `password` requirements | `setRequiredPasswordComplexity` |
+| agent protection | `setUninstallBlocked`, device owner status |
+
+Usage collection uses `NetworkStatsManager`. A device owner is expected to get device-wide stats access
+(all UIDs, including `UID_TETHERING`) without the usage-access permission. **Confirm on a RugKing in the Phase 1 spike.**
 
 ## 6. Data model
 
-- `mdm_devices`: id, amapi_name (unique, `enterprises/x/devices/y`), serial, model, android_version, imei, assigned_user_id, policy_id, state, enrolled_at, last_status_at
-- `mdm_policies`: id, amapi_name, name, payload (json), version
-- `mdm_enrollment_tokens`: id, amapi_name, policy_id, qr_code (json), expires_at
-- `mdm_device_tokens`: id, device_id, token_hash, created_at, revoked_at
-- `mdm_pubsub_messages`: id, message_id (unique), notification_type, raw (json), received_at, processed_at, error
-- `mdm_status_reports`: id, device_id, payload (json), reported_at
-- `mdm_app_inventory`: device_id, package_name, version_name, state, last_seen_at (unique device+package)
-- `mdm_usage_samples`: id, device_id, package_name (nullable; tethering rows use `__tethering__`), network_type (`mobile`, `wifi`), rx_bytes, tx_bytes, period_start, period_end; unique (device_id, package_name, network_type, period_start)
+- `mdm_device_groups`: id, name, policy_id
+- `mdm_policies`: id, name, payload (jsonb), version
+- `mdm_devices`: id, uuid, serial, imei, model, manufacturer, android_version, security_patch, agent_version_code, group_id, policy_overrides (jsonb), applied_policy_version, fcm_token, assigned_user_id, state, enrolled_at, last_checkin_at
+- `mdm_enrollment_tokens`: id, token_hash, group_id, max_uses, uses, expires_at, created_by
+- `mdm_device_credentials`: id, device_id, token_hash, created_at, revoked_at
+- `mdm_commands`: id, uuid, device_id, type, payload (jsonb), status (`queued`, `delivered`, `succeeded`, `failed`, `expired`), requested_by, created_at, delivered_at, completed_at, result (jsonb)
+- `mdm_ingest_batches`: id, device_id, batch_uuid (unique), kind, raw (jsonb), received_at, processed_at, error
+- `mdm_status_reports`: id, device_id, payload (jsonb), reported_at
+- `mdm_app_inventory`: device_id, package_name, version_name, version_code, enabled, last_seen_at (unique device+package)
+- `mdm_usage_samples`: id, device_id, package_name (NOT NULL; sentinels `__tethering__`, `__removed__`, `__uid_<n>__` for shared/unknown UIDs), network_type (`mobile`, `wifi`), rx_bytes, tx_bytes, period_start, period_end; unique (device_id, package_name, network_type, period_start)
 - `mdm_network_logs`: id, device_id, log_type (`dns`, `connect`), host, ip, port, package_name, occurred_at
-- `mdm_commands`: id, device_id, type, amapi_operation, status, requested_by, created_at, completed_at
-- `mdm_alert_rules`: id, name, metric, threshold, window, enabled
-- `mdm_alerts`: id, rule_id, device_id, value, triggered_at, acknowledged_at
+- `mdm_agent_releases`: id, version_code, version_name, apk_path, sha256, cert_checksum, is_current, created_at
+- `mdm_alert_rules`: id, name, metric, threshold, window, recipients, enabled
+- `mdm_alerts`: id, rule_id, device_id, value, triggered_at, notified_at, acknowledged_at
+- `mdm_audit_log`: id, actor_id, action, subject, data (jsonb), created_at
 
-Raw tables (`pubsub_messages`, `network_logs`) need a retention job (for example 90 days).
+All timestamps UTC. Raw/high-volume tables (`ingest_batches`, `network_logs`, `status_reports`) get retention jobs (default 90 days).
 
 ## 7. Endpoints
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| POST | `/webhooks/amapi` | Pub/Sub OIDC JWT (verify issuer, audience, service-account email) | Device events |
-| POST | `/api/companion/v1/usage` | Bearer device token (hashed lookup) | Batched usage samples |
-| POST | `/api/companion/v1/heartbeat` | Bearer device token | Companion liveness |
-| * | `/admin/mdm/*` | Existing admin auth + role | Dashboard, devices, policies, commands, alerts |
+| GET | `/agent/apk/{version}` | Public (checksum-verified by Android) | APK download for provisioning and self-update |
+| POST | `/api/device/v1/enroll` | Enrollment token | Register device, return device credential |
+| POST | `/api/device/v1/checkin` | Bearer device credential | Status + FCM token in; effective policy + pending commands out |
+| POST | `/api/device/v1/commands/{uuid}/result` | Bearer device credential | Command outcome |
+| POST | `/api/device/v1/inventory` | Bearer device credential | Installed apps |
+| POST | `/api/device/v1/usage` | Bearer device credential | Batched usage samples |
+| POST | `/api/device/v1/network-logs` | Bearer device credential | Batched network logs |
+| * | `/admin/*` | Filament login + role | Dashboard, devices, groups, policies, commands, alerts, releases |
 
-Webhook body: `message.data` is base64 JSON; `message.attributes.notificationType` selects the handler.
+Ingest endpoints are idempotent on a client-generated `batch_uuid`: validate, store raw, dispatch job, return 2xx.
 
 ## 8. Security
-- Service-account key never in git; loaded from env path.
-- Pub/Sub push verified via OIDC token; reject anything else.
-- Device tokens: random 32+ bytes, stored hashed, delivered via managed configuration, revocable per device.
-- Rate-limit companion endpoints.
-- Role-based access to admin actions; log every command with `requested_by`.
-- Signed staff device-use policy before rollout (Kenya Data Protection Act 2019).
+- TLS everywhere (reverse proxy with Let's Encrypt). Device API rate-limited.
+- Enrollment tokens and device credentials: random 32+ bytes, stored hashed, expiring/revocable.
+- Agent APK signed with a release keystore kept **outside git** and backed up offline. Losing it means re-provisioning every phone.
+- FCM messages carry no data except "check in"; all commands are fetched over authenticated HTTPS.
+- Role-based admin access; every command and policy change written to `mdm_audit_log`.
+- Secrets (Firebase service-account JSON, DB/SMTP passwords, keystore) in `.env`/server paths, never in git.
+- Kenya Data Protection Act 2019: signed staff device-use policy before rollout, staff notice of what is collected,
+  retention limits on network logs, check ODPC registration obligations.
 
 ## 9. Phases and acceptance criteria
 
-**Phase 0 — Discovery**
-Inspect the existing PHP repo: framework and version, DB, auth, queue setup, frontend. Fill in CLAUDE.md commands. Choose the admin UI. Propose module structure.
-*Done when:* written plan approved.
+**Phase 0 — Decisions** ✅
+Stack, hosting, alerting, AMAPI replaced by own DPC.
 
-**Phase 1 — AMAPI foundation**
-`AmapiService`, config, migrations for devices, policies, tokens. Commands to create policy and enrollment token (QR). Enroll one RugKing.
-*Done when:* one phone enrolled and visible via `devices.list`.
+**Phase 1 — Device spike (de-risk first)**
+Minimal Kotlin DPC provisioned by QR on one RugKing. Confirm: device owner provisioning works, hotspot restriction
+blocks and unblocks tethering, `NetworkStatsManager` returns all-UID and tethering stats, network logging delivers
+batches, lock/reboot work, behaviour under Ulefone battery management.
+*Done when:* written spike report with pass/fail per item.
 
-**Phase 2 — Event ingestion**
-Webhook with OIDC verification, idempotent storage, jobs per notification type, device and app-inventory sync, network logs.
-*Done when:* status reports and app inventory update in the DB automatically.
+**Phase 2 — Backend foundation**
+Laravel + Docker Compose (app, worker, scheduler, Postgres, Redis), Filament admin with roles, migrations, enrollment
+tokens + QR, device enroll/checkin API, policy builder, command queue, FCM `PushService`, tests.
+*Done when:* tests pass and a simulated device (HTTP client) can enroll, check in, and receive policy + commands.
 
-**Phase 3 — Companion app**
-Kotlin app reading `NetworkStatsManager` (per-UID and tethering buckets), reading managed config, batching uploads with WorkManager. Distributed as a private app via managed Google Play.
-*Spike first:* confirm usage-access permission can be granted on a fully managed RugKing, and test Ulefone battery optimization.
-*Done when:* 3 days of per-app and tethering usage arrive reliably from the test phone.
+**Phase 3 — Agent MVP**
+Agent: provisioning flow, enroll, check-in (FCM + WorkManager), policy enforcement, commands (lock, reboot, reset
+password, wipe), result reporting.
+*Done when:* a RugKing enrolled via QR; admin toggles hotspot and locks the phone from the UI.
 
-**Phase 4 — Admin dashboard**
-Device list and detail, usage charts, app inventory, network logs, policy assignment, remote commands, alert rules and notifications.
-*Done when:* admin can see usage and lock a device from the UI.
+**Phase 4 — Telemetry**
+Status reports, app inventory, per-app + tethering usage, network logs, batching and retry.
+*Done when:* 3 days of reliable data from the test phone.
 
-**Phase 5 — Rollout**
-Retention jobs, monitoring, docs, signed staff policy, enroll remaining phones.
+**Phase 5 — Dashboard & alerts**
+Device list/detail, usage charts, inventory, network logs, alert rules, Zoho Mail notifications.
+*Done when:* admin sees usage charts and receives an alert email.
 
-## 10. Directory layout (adapt to the framework)
+**Phase 6 — Production & rollout**
+Contabo deployment, TLS, backups (pg_dump offsite), monitoring, retention jobs, agent self-update, docs, signed staff
+policy, enroll remaining phones.
+
+## 10. Directory layout
 ```
-app/Mdm/
-  Services/AmapiService.php
-  Http/Controllers/AmapiWebhookController.php
-  Http/Controllers/CompanionIngestController.php
-  Jobs/ (ProcessStatusReport, ProcessEnrollment, ProcessUsageLogs, ProcessUsageBatch)
-  Models/
-  Policies/PolicyBuilder.php
-database/migrations/ (mdm_* tables)
-companion-app/ (Android Studio project, Kotlin)
+backend/                 Laravel app
+  app/Mdm/
+    Services/PushService.php
+    Services/PolicyBuilder.php
+    Services/EnrollmentService.php
+    Http/Controllers/Device/ (Enroll, Checkin, CommandResult, Inventory, Usage, NetworkLogs)
+    Jobs/
+    Models/
+  app/Filament/          admin UI
+  database/migrations/   mdm_* tables
+agent-app/               Android Studio project (Kotlin DPC)
+deploy/                  Docker, reverse proxy, server notes
 docs/ARCHITECTURE.md
+docker-compose.yml
 CLAUDE.md
 ```
 
-## 11. Environment variables
+## 11. Environment variables (backend)
 ```
-AMAPI_PROJECT_ID=
-AMAPI_ENTERPRISE=enterprises/XXXX
-AMAPI_CREDENTIALS_PATH=/secure/path/sa.json
-AMAPI_PUBSUB_TOPIC=projects/<project>/topics/<topic>
-AMAPI_PUSH_AUDIENCE=https://<backend>/webhooks/amapi
-AMAPI_PUSH_SA_EMAIL=<push-subscription-service-account>
+APP_URL=https://<domain>
+DB_CONNECTION=pgsql
+REDIS_HOST=redis
+FCM_PROJECT_ID=
+FCM_CREDENTIALS_PATH=/secure/path/firebase-sa.json
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.zoho.com        # region-specific, e.g. smtp.zoho.eu
+MAIL_PORT=465
+MAIL_USERNAME=
+MAIL_PASSWORD=                 # Zoho app-specific password
+AGENT_CERT_CHECKSUM=           # SHA-256 of agent signing cert, URL-safe base64
 ```
 
 ## 12. Open questions
-- Exact PHP framework/version and DB (Phase 0).
-- Admin UI choice (Phase 0).
-- Hotspot policy: block for everyone, or allow and monitor for some roles?
-- Alert channels: email, SMS, Slack?
+- Domain name for the VPS (needed for TLS and the provisioning QR).
+- Exact RugKing model(s) and Android version (sets the agent's `minSdk`).
+- Agent package name (for example `com.<company>.mdm.agent`; cannot change after rollout).
+- Admin roles needed (for example super admin, IT staff, read-only manager).

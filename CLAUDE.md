@@ -7,6 +7,7 @@ It is a **standalone production project**: a Laravel backend plus our own Kotlin
 forbids in-house-only solutions).
 
 Full design: `docs/ARCHITECTURE.md` — read it before making structural changes.
+**Current state, pending decisions, and next steps: `docs/STATUS.md` — read it at the start of every session and update it at the end.**
 
 ## Stack
 - Backend: Laravel (latest stable), PHP 8.3+, in `backend/`

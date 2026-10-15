@@ -48,6 +48,7 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         dpm = getSystemService(DevicePolicyManager::class.java)
+        if (Agent.isEnrolled(this)) Agent.schedulePeriodicCheckin(this) // KEEP: no-op when already scheduled
         if (!isTestBuild) {
             setContentView(withSystemBarPadding(ScrollView(this).apply { addView(NoticeView(context)) }))
             return
@@ -79,6 +80,10 @@ class MainActivity : Activity() {
 
         controls.section("Status")
         controls.button("Show status") { showStatus() }
+        controls.button("Check in with the server now") {
+            Agent.checkInNow(this)
+            SpikeLog.log(this, "INFO check-in queued (runs as soon as there is a network)")
+        }
         controls.button("Show staff notice (what release builds display)") {
             AlertDialog.Builder(this)
                 .setView(ScrollView(this).apply {
@@ -186,6 +191,13 @@ class MainActivity : Activity() {
             "INFO enrollmentToken=${if (enrollment.contains(EnrollmentTokenReceiver.EXTRA_TOKEN)) "present" else "none"} " +
                 "assetTag=${enrollment.getString(EnrollmentTokenReceiver.EXTRA_ASSET_TAG, "")} " +
                 "assignedTo=${enrollment.getString(EnrollmentTokenReceiver.EXTRA_ASSIGNED_TO, "")}",
+        )
+        val agent = Agent.prefs(this)
+        SpikeLog.log(
+            this,
+            "INFO server=${agent.getString(Agent.KEY_SERVER, "-")} enrolled=${Agent.isEnrolled(this)} " +
+                "lastCheckin=${agent.getString(Agent.KEY_LAST_CHECKIN, "never")} " +
+                "policyApplied=v${PolicyEnforcer(this).appliedVersion} lastError=${agent.getString(Agent.KEY_LAST_ERROR, "none")}",
         )
     }
 

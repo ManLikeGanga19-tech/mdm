@@ -25,7 +25,8 @@
         \n\nQuestions? Contact Noahport IT.</string>
     <string name="notice_acknowledge">I understand</string>
     <string name="notice_acknowledged">Acknowledged on %1$s</string>
-    <string name="notice_device_info">Asset tag: %1$s\nIssued to: %2$s\nManaged by Noahport: %3$s\nAgent version: %4$s</string>
+    <string name="notice_device_info">Asset tag: %1$s\nIssued to: %2$s\nManaged by Noahport: %3$s\nAgent version: %4$s\nLast sync with Noahport: %5$s</string>
+    <string name="notice_not_synced">not yet</string>
     <string name="notice_not_set">not set</string>
     <string name="notice_yes">yes</string>
     <string name="notice_no">no</string>

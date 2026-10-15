@@ -1,10 +1,13 @@
 // Noahport MDM - USB enrollment for company laptops (docs/ARCHITECTURE.md section 3, "USB enrollment").
 //
 // For each freshly reset phone: checks it is safe to enroll, installs the embedded agent, makes it device owner,
-// hands it its enrollment token and label, and appends a row to Documents\Noahport\enrollments.csv.
+// hands it the server address, the enrollment code and its label (the agent then registers itself with the
+// server), and appends a row to Documents\Noahport\enrollments.csv.
+// The enrollment code comes from the admin site (Enrollment codes) and is asked for once per session.
 // adb (Android Platform-Tools) is downloaded from Google on first use unless it sits next to the exe or on PATH.
 //
-// Double-click to run. Test flags: --once --asset-tag X [--assigned-to Y] [--token T]; ANDROID_SERIAL picks a phone.
+// Double-click to run. Test flags: --once --asset-tag X [--assigned-to Y] [--code C] [--server URL];
+// ANDROID_SERIAL picks a phone.
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -44,8 +47,8 @@ static class Program
     static readonly string CsvPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Noahport", "enrollments.csv");
 
     static bool once;
-    static string assetTagArg = "", assignedToArg = "", tokenArg = "";
-    static string adb, apk, serial;
+    static string assetTagArg = "", assignedToArg = "", codeArg = "", serverArg = "";
+    static string adb, apk, serial, server, code;
 
     static int Main(string[] args)
     {
@@ -81,7 +84,8 @@ static class Program
                 case "--once": once = true; break;
                 case "--asset-tag": assetTagArg = Next(); break;
                 case "--assigned-to": assignedToArg = Next(); break;
-                case "--token": tokenArg = Next(); break;
+                case "--code": codeArg = Next(); break;
+                case "--server": serverArg = Next(); break;
                 default: throw new ArgumentException("Unknown option " + args[i]);
             }
         }
@@ -97,6 +101,10 @@ static class Program
         apk = ExtractAgent();
         adb = FindAdb();
         Adb("start-server");
+        server = (serverArg != "" ? serverArg : Meta["ServerUrl"]).TrimEnd('/');
+        if (!server.StartsWith("https://")) throw new InvalidOperationException($"Server address must start with https:// (got '{server}').");
+        Say("Server: " + server);
+        code = AskEnrollmentCode();
         Say("Results are saved to " + CsvPath);
 
         var enrolled = 0;
@@ -144,7 +152,7 @@ static class Program
             }
 
             if (once) return exitCode;
-            assetTagArg = assignedToArg = tokenArg = "";
+            assetTagArg = assignedToArg = "";
             Say("");
             Console.Write("Unplug the phone. Press Enter for the next phone, or type Q and Enter to quit: ");
             if ((Console.ReadLine() ?? "q").Trim().StartsWith("q", StringComparison.OrdinalIgnoreCase)) break;
@@ -216,15 +224,89 @@ static class Program
         if (!Shell("dpm list-owners").Contains(Component + ",DeviceOwner"))
             throw new EnrollException("set-device-owner reported success but the agent is not device owner.");
 
-        Step("Handing over the enrollment token");
-        var token = tokenArg != "" ? tokenArg : NewToken();
-        // Labels match LabelPattern (no quotes), so single-quoting is safe for the phone's shell.
+        Step("Registering it with the server");
+        // Labels match LabelPattern, the code CodePattern and the server is a checked https URL: no quotes or spaces,
+        // so single-quoting is safe for the phone's shell.
         var broadcast = Shell($"am broadcast --include-stopped-packages -n {Package}/.EnrollmentTokenReceiver " +
-            $"--es enrollment_token {token} --es asset_tag '{phone.AssetTag}' --es assigned_to '{phone.AssignedTo}'");
+            $"--es api_base_url '{server}' --es enrollment_token '{code}' " +
+            $"--es asset_tag '{phone.AssetTag}' --es assigned_to '{phone.AssignedTo}'");
         if (!Regex.IsMatch(broadcast, @"result=1\b"))
-            throw new EnrollException("The agent did not accept the enrollment token: " + broadcast);
+            throw new EnrollException("The agent did not accept the enrollment code: " + broadcast);
 
         Shell($"am start -n {Package}/.MainActivity");
+        Say("    The phone now registers itself and appears on the admin site within a minute (it needs internet).", ConsoleColor.Gray);
+    }
+
+    static readonly Regex CodePattern = new(@"^[A-Za-z0-9-]{8,100}$");
+
+    /// <summary>Asks for the admin site's enrollment code until the server accepts it. Does not use it up.</summary>
+    static string AskEnrollmentCode()
+    {
+        var value = codeArg;
+        while (true)
+        {
+            if (value == "")
+            {
+                Say("");
+                Console.Write("Enrollment code (admin site > Enrollment codes): ");
+                value = (Console.ReadLine() ?? "").Trim();
+            }
+            value = Regex.Replace(value, @"\s+", "").ToUpperInvariant();
+            if (!CodePattern.IsMatch(value))
+            {
+                Say("That doesn't look like an enrollment code (it starts with NPE-).", ConsoleColor.Yellow);
+            }
+            else
+            {
+                var (status, body) = PostJson(server + "/api/device/v1/enrollment-code/check", $"{{\"enrollment_token\":\"{value}\"}}");
+                if (status == 200)
+                {
+                    var label = JsonField(body, "label");
+                    var group = JsonField(body, "group") ?? "no group";
+                    Say($"Code accepted: \"{label}\", phones go into {group}, {JsonField(body, "uses_left")} phone(s) left.", ConsoleColor.Green);
+                    return value;
+                }
+                Say(status == 401
+                    ? "The server refused this code: it is wrong, used up or expired. Create a new one on the admin site."
+                    : $"Could not check the code with {server} (HTTP {status}). Check the laptop's internet connection.", ConsoleColor.Yellow);
+            }
+            if (once) throw new InvalidOperationException("No valid enrollment code.");
+            value = "";
+        }
+    }
+
+    static (int status, string body) PostJson(string url, string json)
+    {
+        ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
+        var request = (HttpWebRequest)WebRequest.Create(url);
+        request.Method = "POST";
+        request.ContentType = "application/json";
+        request.Accept = "application/json";
+        request.Timeout = 20000;
+        var bytes = Encoding.UTF8.GetBytes(json);
+        try
+        {
+            using (var stream = request.GetRequestStream()) stream.Write(bytes, 0, bytes.Length);
+            using var response = (HttpWebResponse)request.GetResponse();
+            using var reader = new StreamReader(response.GetResponseStream());
+            return ((int)response.StatusCode, reader.ReadToEnd());
+        }
+        catch (WebException e) when (e.Response is HttpWebResponse error)
+        {
+            using var reader = new StreamReader(error.GetResponseStream());
+            return ((int)error.StatusCode, reader.ReadToEnd());
+        }
+        catch (WebException)
+        {
+            return (0, "");
+        }
+    }
+
+    /// <summary>Reads one top-level string or number field from a small, flat JSON object.</summary>
+    static string JsonField(string json, string name)
+    {
+        var m = Regex.Match(json, "\"" + Regex.Escape(name) + "\"\\s*:\\s*(\"((?:[^\"\\\\]|\\\\.)*)\"|(-?\\d+))");
+        return !m.Success ? null : m.Groups[2].Success && m.Groups[1].Value.StartsWith("\"") ? Regex.Unescape(m.Groups[2].Value) : m.Groups[3].Value;
     }
 
     // ---- setup ----
@@ -359,12 +441,6 @@ static class Program
         }
     }
 
-    static string NewToken()
-    {
-        var bytes = new byte[32];
-        using (var rng = RandomNumberGenerator.Create()) rng.GetBytes(bytes);
-        return Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
-    }
 
     static void WriteRecord(Phone phone, string result, string detail)
     {

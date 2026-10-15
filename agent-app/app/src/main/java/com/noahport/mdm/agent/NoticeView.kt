@@ -69,6 +69,9 @@ class NoticeView(context: Context) : LinearLayout(context) {
             prefs.getString(EnrollmentTokenReceiver.EXTRA_ASSIGNED_TO, "").orEmpty().ifEmpty { notSet },
             context.getString(if (owner) R.string.notice_yes else R.string.notice_no),
             version,
+            Agent.prefs(context).getString(Agent.KEY_LAST_CHECKIN, null)
+                ?.let { DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm").format(Instant.parse(it).atZone(ZoneId.systemDefault())) }
+                ?: context.getString(R.string.notice_not_synced),
         )
     }
 

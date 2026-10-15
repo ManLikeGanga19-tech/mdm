@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- USB enrollment tool for company laptops. Targets .NET Framework 4.8, which ships with Windows 10 (1903+) and 11,
+       so the exe runs with nothing installed. Built by agent-app/scripts/make-enroll-kit.sh, which passes the signed
+       release APK and its metadata:
+         dotnet publish -c Release -p:AgentApk=... -p:AgentVersion=... -p:ApkSha256=... -p:SigningCertSha256=... -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AssemblyName>NoahportEnroll</AssemblyName>
+    <RootNamespace>Noahport.Enroll</RootNamespace>
+    <Company>Noahport</Company>
+    <Product>Noahport MDM USB enrollment</Product>
+    <Version>$(AgentVersionNumeric)</Version>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(AgentApk)' != ''">
+    <EmbeddedResource Include="$(AgentApk)" LogicalName="agent.apk" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="AgentPackage" Value="com.noahport.mdm.agent" />
+    <AssemblyMetadata Include="AgentAdminReceiver" Value=".AdminReceiver" />
+    <AssemblyMetadata Include="AgentMinSdk" Value="33" />
+    <AssemblyMetadata Include="AgentVersion" Value="$(AgentVersion)" />
+    <AssemblyMetadata Include="ApkSha256" Value="$(ApkSha256)" />
+    <AssemblyMetadata Include="SigningCertSha256" Value="$(SigningCertSha256)" />
+  </ItemGroup>
+
+</Project>

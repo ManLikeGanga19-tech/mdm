@@ -1,4 +1,2 @@
-# Windows-side enrollment kit: keep CRLF so cmd.exe and Notepad behave on any laptop
-enroll/*.cmd text eol=crlf
-enroll/*.ps1 text eol=crlf
+# Windows-side enrollment kit README: keep CRLF so Notepad shows it properly on any laptop
 enroll/*.txt text eol=crlf

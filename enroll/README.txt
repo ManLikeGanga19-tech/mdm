@@ -1,21 +1,24 @@
 NOAHPORT MDM - ENROLLING COMPANY PHONES OVER USB
 ================================================
 
-Works on any Windows 10/11 laptop. No admin rights and no Android Studio needed.
-Enrolling ERASES nothing by itself, but the phone must be freshly factory reset first.
+Works on any Windows 10/11 laptop. No admin rights, nothing to install.
+The tool is one file: NoahportEnroll-<version>.exe.
+Enrolling erases nothing by itself, but the phone must be freshly factory reset first.
 
 
 ONE-TIME SETUP ON THE LAPTOP
 ----------------------------
-1. Download the kit zip from the OneDrive link IT gave you.
-2. Right-click the zip > Properties > tick "Unblock" (if shown) > OK.
-   This stops Windows asking "Do you want to run this file?" for every phone.
-3. Right-click the zip > Extract All... > choose e.g. Documents\noahport-enroll-kit.
-4. The first run downloads Android Platform-Tools (adb, about 7 MB) from Google
+1. Download NoahportEnroll-<version>.exe from the OneDrive link IT gave you,
+   e.g. into Documents\Noahport.
+2. Right-click the exe > Properties > tick "Unblock" (if shown) > OK.
+3. The first run downloads Android Platform-Tools (adb, about 7 MB) from Google
    into your user folder. If the laptop has no internet, download
    "SDK Platform-Tools for Windows" from
    https://developer.android.com/tools/releases/platform-tools
-   and unzip it into the kit folder (so that platform-tools\adb.exe is next to enroll.ps1).
+   and unzip it next to the exe (so that platform-tools\adb.exe is beside it).
+
+If Windows shows "Windows protected your PC": click "More info" > "Run anyway".
+(The tool is not yet code-signed, so Windows doesn't recognise it.)
 
 
 PREPARE EACH PHONE
@@ -29,7 +32,7 @@ PREPARE EACH PHONE
 
 ENROLL
 ------
-1. Double-click enroll.cmd in the kit folder. A black window opens.
+1. Double-click NoahportEnroll-<version>.exe. A black window opens.
 2. Plug in the phone with a DATA cable. On the phone tap "Allow" on
    "Allow USB debugging?" (tick "Always allow").
 3. Type the phone's asset tag (e.g. NP-0042) and press Enter.
@@ -52,8 +55,9 @@ IF SOMETHING GOES WRONG
 "Another app manages this     The phone belongs to another MDM. Factory reset it.
  phone"
 "set-device-owner failed"     Factory reset, skip as much of setup as possible, try again.
-"does not match kit.json"     The download is damaged. Download the kit again.
-"Could not download           The laptop can't reach Google. See ONE-TIME SETUP step 4.
+"agent inside this tool is    The download is damaged. Download the exe again.
+ damaged"
+"Could not download           The laptop can't reach Google. See ONE-TIME SETUP step 3.
  Platform-Tools"
-The window closes instantly / The laptop blocks scripts. Ask IT to allow enroll.cmd,
-"running scripts is disabled"  or run it from a laptop that allows it.
+The exe is blocked or deleted The laptop's security software doesn't trust it yet.
+ by the laptop                Ask IT to allow NoahportEnroll.exe.

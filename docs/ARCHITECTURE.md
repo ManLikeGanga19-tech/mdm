@@ -43,7 +43,8 @@ the admin-extras bundle → backend returns a per-device credential.
 the agent is allowlisted, phones are enrolled from a company laptop over USB: install the release APK, `dpm
 set-device-owner`, then hand the agent its enrollment token and label (asset tag, assigned-to) with `am broadcast` to
 `EnrollmentTokenReceiver`, which is protected by `android.permission.DUMP` (held by adb shell, not by third-party apps).
-Tool: `enroll/enroll.ps1` (Windows PowerShell 5.1, no admin), shipped as a zip kit built by
+Tool: `enroll/NoahportEnroll` (C#, .NET Framework 4.8, so it runs on any Windows 10/11 with nothing installed and no
+admin), a single `NoahportEnroll-<version>.exe` with the signed agent embedded, built by
 `agent-app/scripts/make-enroll-kit.sh` and shared via OneDrive until the backend can serve it. The flow then continues
 at `POST /api/device/v1/enroll` exactly as above.
 

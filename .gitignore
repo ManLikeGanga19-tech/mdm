@@ -29,3 +29,7 @@ agent-app/.idea/
 Thumbs.db
 .idea/
 .vscode/
+
+# Enrollment tool (.NET) build output
+enroll/NoahportEnroll/bin/
+enroll/NoahportEnroll/obj/

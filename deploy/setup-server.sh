@@ -51,6 +51,10 @@ sudo systemctl enable --now mdm-edge-guard.path mdm-edge-guard.timer
 
 # 4. Nightly database backup at 02:30 server time, 14 days kept.
 mkdir -p ../backups
-( crontab -l 2>/dev/null | grep -v 'noahport-mdm/deploy/backup.sh'; echo '30 2 * * * /opt/noahport-mdm/deploy/backup.sh >> /opt/noahport-mdm/backups/backup.log 2>&1' ) | crontab -
+# (`crontab -l` fails when the user has no crontab yet, and grep -v fails on empty input: neither is an error here.)
+{
+  { crontab -l 2>/dev/null || true; } | { grep -v 'noahport-mdm/deploy/backup.sh' || true; }
+  echo '30 2 * * * /opt/noahport-mdm/deploy/backup.sh >> /opt/noahport-mdm/backups/backup.log 2>&1'
+} | crontab -
 
 echo "Setup done. Next: deploy/deploy.sh"

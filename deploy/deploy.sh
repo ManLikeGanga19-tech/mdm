@@ -13,5 +13,5 @@ dc exec -T app php artisan filament:optimize
 dc exec -T app php artisan horizon:terminate # Horizon restarts itself on the new code
 
 # Put the site block in place now instead of waiting for the guard's next tick.
-/opt/caddy-sites/mdm-guard.sh
+/opt/caddy-sites/mdm-guard.sh || true
 dc ps

@@ -5,6 +5,11 @@ Caddy (`sms-caddy`, owned by ShuleHQ) holds ports 80/443. Each project keeps its
 `/opt/caddy-sites/<project>.caddy` and a guard re-appends it to `/opt/shulehq/Caddyfile` whenever a ShuleHQ deploy
 overwrites that file. MDM follows the same pattern and never touches the other projects' containers.
 
+**Never run `caddy reload --config /etc/caddy/Caddyfile` in `sms-caddy`.** That path is a single-file bind mount
+that goes stale when ShuleHQ's deploy replaces the host file; reloading it silently drops every site added since
+(on 2026-10-15 it dropped WiFiOS). Stage the host file into `/opt/caddy-sites/.state/` and reload from
+`/etc/caddy/sites/.state/<name>.Caddyfile`, as `mdm-guard.sh` and `wifios-guard.sh` do.
+
 | What | Where |
 |---|---|
 | Address | https://mdm.94-72-102-13.sslip.io (sslip.io; switch to a company subdomain later) |

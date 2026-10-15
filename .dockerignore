@@ -1,0 +1,16 @@
+# Production image context is the repo root (deploy/docker/app.prod.Dockerfile); only backend/ is needed.
+.git
+agent-app
+enroll
+docs
+deploy/*.env*
+**/.env
+**/.env.*
+!backend/.env.example
+backend/vendor
+backend/node_modules
+backend/storage/logs/*
+backend/storage/framework/cache/*
+backend/storage/framework/sessions/*
+backend/storage/framework/views/*
+backend/tests

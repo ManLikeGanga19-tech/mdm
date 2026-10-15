@@ -1,0 +1,83 @@
+# Noahport MDM on the shared Contabo VPS (/opt/noahport-mdm). See deploy/README.md.
+# No host ports: the shared edge Caddy (sms-caddy) reaches the app over the external network mdm-edge-net.
+# Memory limits keep this stack from squeezing the other projects on the server.
+name: noahport-mdm
+
+x-app: &app
+  image: noahport-mdm-app:prod
+  restart: unless-stopped
+  volumes:
+    - ./.env.production:/app/.env:ro
+    - storage:/app/storage
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_started
+  networks: [internal]
+
+services:
+  app:
+    <<: *app
+    build:
+      context: ..
+      dockerfile: deploy/docker/app.prod.Dockerfile
+    mem_limit: 512m
+    networks:
+      internal: {}
+      edge:
+        aliases: [noahport-mdm-app]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost/up"]
+      interval: 30s
+      retries: 3
+
+  horizon:
+    <<: *app
+    command: php artisan horizon
+    mem_limit: 384m
+    healthcheck:
+      disable: true
+
+  scheduler:
+    <<: *app
+    command: php artisan schedule:work
+    mem_limit: 192m
+    healthcheck:
+      disable: true
+
+  postgres:
+    image: postgres:16.10-alpine
+    restart: unless-stopped
+    mem_limit: 512m
+    environment:
+      POSTGRES_DB: mdm
+      POSTGRES_USER: mdm
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in deploy/.env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mdm -d mdm"]
+      interval: 10s
+      retries: 10
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    mem_limit: 128m
+    command: redis-server --appendonly yes
+    volumes:
+      - redisdata:/data
+    networks: [internal]
+
+networks:
+  internal: {}
+  edge:
+    external: true
+    name: mdm-edge-net
+
+volumes:
+  pgdata:
+  redisdata:
+  storage:

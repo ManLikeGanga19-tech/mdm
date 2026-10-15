@@ -1,0 +1,7 @@
+[Unit]
+Description=Watch ShuleHQ Caddyfile; trigger Noahport MDM guard on change
+[Path]
+PathModified=/opt/shulehq/Caddyfile
+Unit=mdm-edge-guard.service
+[Install]
+WantedBy=multi-user.target

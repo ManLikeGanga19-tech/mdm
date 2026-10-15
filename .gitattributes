@@ -1,2 +1,7 @@
 # Windows-side enrollment kit README: keep CRLF so Notepad shows it properly on any laptop
 enroll/*.txt text eol=crlf
+
+# Scripts that run on the Linux VPS must keep LF endings
+deploy/**/*.sh text eol=lf
+deploy/systemd/* text eol=lf
+deploy/caddy/* text eol=lf

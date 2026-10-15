@@ -1,0 +1,15 @@
+# ── Noahport MDM ─────────────────────────────────────────────────────
+# Source of truth: /opt/caddy-sites/mdm.caddy (from the mdm repo, deploy/caddy/mdm.caddy).
+# Re-applied to the shared Caddyfile by mdm-edge-guard when a ShuleHQ deploy wipes it.
+# TLS: automatic HTTP-01. sslip.io resolves mdm.94-72-102-13.sslip.io to this server; switch to the company
+# subdomain once DNS access exists.
+mdm.94-72-102-13.sslip.io {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+	reverse_proxy noahport-mdm-app:80
+}

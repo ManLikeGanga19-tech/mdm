@@ -7,7 +7,7 @@ Spike app: `agent-app/` (`com.noahport.mdm.agent`, minSdk 33, debug build).
 | Device | Android | Notes |
 |---|---|---|
 | Android emulator (Pixel 9 image, Google Play) | 15 (SDK 35) | 2026-10-15. Checks the APIs only: no real hotspot, no OEM battery management |
-| Non-RugKing test phone (model TBD) | TBD | Real hardware, but **not** valid for Ulefone battery behaviour |
+| Safaricom Neon Smarta 2 K (non-RugKing test phone) | 14 (SDK 34), patch 2026-07-05 | 2026-10-15, at home. Real hardware, but **not** valid for Ulefone battery behaviour. SIM had no working mobile data |
 | Ulefone RugKing (model TBD) | 13–15 | Repeat at least QR provisioning, hotspot and the 24 h soak |
 
 ## Setup (adb, quickest)
@@ -90,20 +90,23 @@ Take a photo of any error screen: those screens can't be screenshotted.
 ## Results
 | # | Check | Emulator (A15) | Test phone | RugKing | Notes |
 |---|---|---|---|---|---|
-| 1 | Device owner via adb | PASS | pending | pending | Fails with "already some accounts" on a previously used emulator; fresh one fine |
-| 2 | Hotspot block (turns off active hotspot) | PASS (restriction set) | pending | pending | Emulator has no real hotspot; turn-off must be checked on hardware |
-| 3 | Hotspot unblock | PASS | pending | pending | |
-| 4 | All-UID usage without usage access | **PASS** | pending | pending | 15 UIDs on mobile and on Wi-Fi with no usage-access grant |
-| 5 | `UID_TETHERING` usage | n/a | pending | pending | Needs a real hotspot |
-| 6 | Network logging batches | **PASS** | pending | pending | 26 events (8 DNS, 18 connect) with package names, via `force-network-logs` |
-| 7 | Lock | PASS | pending | pending | |
-| 8 | Reboot | PASS | pending | pending | Still device owner after reboot |
-| 9 | App suspend / hide | PASS | pending | pending | Chrome suspended/unsuspended and hidden/unhidden |
-| 10 | QR provisioning | not tested | pending | pending | |
+| 1 | Device owner via adb | PASS | **PASS** | pending | Fails with "already some accounts" on a previously used emulator; fresh one fine |
+| 2 | Hotspot block (turns off active hotspot) | PASS (restriction set) | **PASS** | pending | Emulator has no real hotspot; turn-off must be checked on hardware |
+| 3 | Hotspot unblock | PASS | **PASS** | pending | |
+| 4 | All-UID usage without usage access | **PASS** | PASS (Wi-Fi) | pending | 15 UIDs on mobile and on Wi-Fi with no usage-access grant |
+| 5 | `UID_TETHERING` usage | n/a | not tested | pending | Needs a real hotspot |
+| 6 | Network logging batches | **PASS** | **PASS** | pending | 26 events (8 DNS, 18 connect) with package names, via `force-network-logs` |
+| 7 | Lock | PASS | **PASS** | pending | |
+| 8 | Reboot | PASS | **PASS** | pending | Still device owner after reboot |
+| 9 | App suspend / hide | PASS | **PASS** | pending | Chrome suspended/unsuspended and hidden/unhidden |
+| 10 | QR provisioning | not tested | **FAIL: Play Protect** | pending | "App blocked to protect your device" during QR setup; see below |
 | 11 | 24 h soak | n/a | pending | pending | Only the RugKing result counts |
 
 Other observations:
 - As device owner the app's standby bucket is `5` (EXEMPTED), even though it isn't on the battery-optimization allowlist. That's a good sign for background jobs; the RugKing soak still has to confirm it.
+- Test phone (Neon Smarta 2 K): Wi-Fi usage 19 UIDs / 48 MB; network logging 64 events (21 DNS, 43 connect) with package and host names; suspended Chrome opens the "Blocked by your IT admin" dialog; device owner and network logging survive reboot. Mobile and tethering usage untested: the SIM never got a data connection (no default network with Wi-Fi off).
+- Test phone: logcat at 15:25 UTC showed `Cannot suspend package "com.noahport.mdm.agent": has an active device admin`. Something on the phone (OEM app manager?) tried to suspend the agent; device admin status blocked it.
+- **QR provisioning is blocked by Google Play Protect.** Since ~Sept 2026, Play Protect only lets DPCs on Android Enterprise's allowlist install during provisioning; others get "App blocked to protect your device" with only an OK button ([Google: DPC allowlisting](https://support.google.com/work/android/answer/16694822)). It reportedly also blocks Google's own Test DPC. Getting on the list: Android verification plus a Play Protect appeal, with no published review time. `adb shell dpm set-device-owner` still works.
 - Bug found and fixed on the emulator: without the `INTERNET` permission, `NetworkInterface.getNetworkInterfaces()` returns null and crashed the app.
 
 ## Conclusions

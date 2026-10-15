@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\Devices\Widgets\DeviceLiveStatus;
 use App\Filament\Widgets\FleetOverview;
 use App\Filament\Widgets\HandoversChart;
 use App\Filament\Widgets\HoldersNow;
@@ -59,6 +60,20 @@ class DashboardTest extends TestCase
         Livewire::test(HoldersNow::class)->assertSee('Jane Wanjiru');
         Livewire::test(RecentActivity::class)->assertSee('Handover');
         Livewire::test(HandoversChart::class)->assertOk();
+    }
+
+    public function test_phone_page_live_status_shows_charging_and_network(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => Role::SuperAdmin]));
+        $phone = Device::create(['asset_tag' => 'NP-0001', 'state' => Device::STATE_ENROLLED, 'last_checkin_at' => now(),
+            'battery_percent' => 57, 'battery_charging' => true, 'network_type' => 'wifi']);
+
+        Livewire::test(DeviceLiveStatus::class, ['record' => $phone])
+            ->assertSee('57%')->assertSee('Charging')->assertSee('Wi-Fi')->assertSee('Reachable');
+
+        $phone->update(['battery_charging' => false, 'network_type' => 'mobile']);
+        Livewire::test(DeviceLiveStatus::class, ['record' => $phone])
+            ->assertSee('On battery')->assertSee('Mobile data');
     }
 
     public function test_coordinator_dashboard_only_shows_who_holds_which_phone(): void

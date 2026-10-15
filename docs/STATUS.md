@@ -26,6 +26,7 @@ hotspot block **pass on a real phone** (Safaricom Neon Smarta 2 K, Android 14). 
 | Package name | `com.noahport.mdm.agent` (company "Noahport"). **Permanent** once phones are enrolled (rule 6) |
 | Agent toolchain | AGP 9.2.1 (matches the installed Android Studio), Gradle 9.8.1 wrapper (checksum-verified), JDK 21 from Studio's `jbr`, compileSdk/targetSdk 36 |
 | Enrollment | **Option C (2026-10-15):** enroll by USB (`dpm set-device-owner`) now, and apply for Play Protect's DPC allowlist in parallel; switch to QR if approved. QR (6-tap) is blocked for non-allowlisted DPCs since ~Sept 2026 |
+| Release signing key | Created 2026-10-15, **permanent** (rule 6). RSA 4096, PKCS12, alias `noahport-mdm-agent`, valid to 2056. Kept outside the repo and OneDrive at `C:\Users\ADMIN\.noahport-signing\` (`release.jks` + `release.properties` with the password); the user must keep an offline backup. Cert SHA-256 `07:E0:6E:5A:07:BF:E4:1F:F5:1D:4A:CA:CE:52:7B:4D:8C:46:F7:72:CB:28:AF:96:68:3F:95:79:41:27:22:D4`, provisioning checksum `B-BuWge_5B_1HUrKzlJ7TYxG93LLKK-WaD-VeUEnItQ`. `assembleRelease` signs with it (path override: `-Pnoahport.signing` / `NOAHPORT_SIGNING`). Release builds aren't debuggable, so `run-as` log pulls only work on debug builds |
 | Provisioning | Agent keeps system apps enabled (`EXTRA_PROVISIONING_LEAVE_ALL_SYSTEM_APPS_ENABLED`), in both the QR payload and the provisioning-mode result |
 
 ## Phase 1 progress
@@ -53,7 +54,9 @@ any PC. Phones only run the agent. Until Phase 2 exists, the spike app's own tes
 ## Waiting on the user
 - [ ] Test phone: get working Safaricom data, then re-enroll by USB and do the tethering-usage check
 - [ ] Run the spike on a RugKing (USB enrollment, hotspot, 24 h soak)
-- [ ] Approve creating the **permanent release signing key** (rule 6). It's needed for the Play Protect allowlist appeal
+- [ ] Back up `C:\Users\ADMIN\.noahport-signing\` offline (USB drive + password manager). Losing it means re-enrolling every phone
+- [ ] Check whether Noahport has a D-U-N-S number (needed for the Android Developer Console / allowlist appeal)
+- [ ] Approve the USB enrollment tool plan
 - [ ] Fleet size, to judge how long USB enrollment takes
 - [ ] Exact RugKing model(s) for the report
 - [ ] Domain name for the VPS (needed by Phase 2/6)
@@ -69,4 +72,4 @@ any PC. Phones only run the agent. Until Phase 2 exists, the spike app's own tes
 ## Session log
 - 2026-10-14: Wrote the docs. Found the AMAPI permissible-usage restriction and switched the design to our own DPC. Hosting, alerts, and hotspot decisions made. Proposed the Phase 1 plan.
 - 2026-10-15: Phase 1 approved. Fleet is Android 13–15; package `com.noahport.mdm.agent`. Built the spike app, QR payload script and spike-report template; `assembleDebug` + `lintDebug` pass. Device testing is next. Ran it on an Android 15 emulator: all emulator-testable checks pass; fixed a crash (missing `INTERNET` permission); added `install-device-owner.sh` and step-by-step QR test instructions. Added Share log button, a verified QR generator (`agent-app/scripts/qr`; `npx qrcode` mangles JSON on Windows) and a work kit in `OneDrive/Desktop/noahport-work-kit` (APK + QR) for testing from the company laptop.
-- 2026-10-15 (evening, at home): Published the `spike-apk` pre-release (verified the hash matches the build). Test 1 (USB) on a Safaricom Neon Smarta 2 K, Android 14: device owner, hotspot block/unblock (turns off a live hotspot), Wi-Fi usage, network logging, lock, suspend/hide, reboot all pass. Mobile/tethering usage not tested (SIM had no data). Test 2 (QR): blocked by Play Protect's DPC allowlist. Chose option C: USB enrollment now, allowlist appeal in parallel. Next: one-click USB enrollment script, then the release key and appeal once the key is approved.
+- 2026-10-15 (evening, at home): Published the `spike-apk` pre-release (verified the hash matches the build). Test 1 (USB) on a Safaricom Neon Smarta 2 K, Android 14: device owner, hotspot block/unblock (turns off a live hotspot), Wi-Fi usage, network logging, lock, suspend/hide, reboot all pass. Mobile/tethering usage not tested (SIM had no data). Test 2 (QR): blocked by Play Protect's DPC allowlist. Chose option C: USB enrollment now, allowlist appeal in parallel. Next: one-click USB enrollment script, then the release key and appeal once the key is approved. Created the permanent release key (user approved) and wired it into `assembleRelease`. Proposed the USB enrollment tool plan.

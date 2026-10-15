@@ -32,10 +32,12 @@ class AdminPanelProvider extends PanelProvider
             ->profile(isSimple: false) // lets every account change its own password
             ->brandName('Noahport MDM')
             ->favicon(asset('icons/icon-192.png'))
+            // Company look: white with blue (light mode only).
             ->colors([
-                'primary' => Color::Orange,
-                'gray' => Color::Stone,
+                'primary' => Color::Blue,
+                'gray' => Color::Slate,
             ])
+            ->darkMode(false)
             ->databaseNotifications()
             ->sidebarCollapsibleOnDesktop()
             // Lets the admin add the site to a phone's home screen like an app.

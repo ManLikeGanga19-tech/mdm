@@ -15,7 +15,7 @@
     <Product>Noahport MDM USB enrollment</Product>
     <Version>$(AgentVersionNumeric)</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <!-- Admin site the phones register with; overridable with -p:ServerUrl=... or the tool's --server flag. -->
+    <!-- Admin site the phones register with; can be overridden at build time (-p:ServerUrl=...) or by the tool's server flag. -->
     <ServerUrl Condition="'$(ServerUrl)' == ''">https://mdm.94-72-102-13.sslip.io</ServerUrl>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>

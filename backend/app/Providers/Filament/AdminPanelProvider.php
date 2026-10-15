@@ -29,6 +29,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            ->profile(isSimple: false) // lets every account change its own password
             ->brandName('Noahport MDM')
             ->favicon(asset('icons/icon-192.png'))
             ->colors([

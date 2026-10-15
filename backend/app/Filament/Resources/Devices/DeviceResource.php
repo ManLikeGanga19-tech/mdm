@@ -123,6 +123,13 @@ class DeviceResource extends Resource
                         })
                         ->color(fn (string $state) => $state === Device::STATE_ENROLLED ? 'success' : 'gray'),
                     TextEntry::make('last_checkin_at')->label('Last check-in')->since()->placeholder('Never'),
+                    TextEntry::make('battery_percent')->label('Battery')->placeholder('-')
+                        ->formatStateUsing(fn (Device $record) => self::battery($record))
+                        ->color(fn (Device $record) => self::batteryColor($record)),
+                    TextEntry::make('network_type')->label('Network')->placeholder('-')
+                        ->formatStateUsing(fn (string $state) => match ($state) {
+                            'wifi' => 'Wi-Fi', 'mobile' => 'Mobile data', 'none' => 'Offline', default => ucfirst($state),
+                        }),
                     TextEntry::make('model')->placeholder('-')
                         ->formatStateUsing(fn (Device $record) => trim("{$record->manufacturer} {$record->model}")),
                     TextEntry::make('android_version')->label('Android')->placeholder('-'),
@@ -156,6 +163,9 @@ class DeviceResource extends Resource
                     })
                     ->color(fn (string $state) => $state === Device::STATE_ENROLLED ? 'success' : 'gray'),
                 TextColumn::make('last_checkin_at')->label('Last check-in')->since()->sortable()->placeholder('Never'),
+                TextColumn::make('battery_percent')->label('Battery')->sortable()->placeholder('-')
+                    ->formatStateUsing(fn (Device $record) => self::battery($record))
+                    ->color(fn (Device $record) => self::batteryColor($record)),
                 TextColumn::make('model')->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('agent_version_name')->label('Agent')->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
             ])
@@ -170,6 +180,23 @@ class DeviceResource extends Resource
             ->recordActions([
                 ViewAction::make(),
             ]);
+    }
+
+    /** "64%" or "64% · charging", as reported at the last check-in. */
+    public static function battery(Device $device): string
+    {
+        return $device->battery_percent === null ? '-'
+            : $device->battery_percent.'%'.($device->battery_charging ? ' · charging' : '');
+    }
+
+    public static function batteryColor(Device $device): ?string
+    {
+        return match (true) {
+            $device->battery_percent === null, (bool) $device->battery_charging => null,
+            $device->battery_percent <= 15 => 'danger',
+            $device->battery_percent <= 30 => 'warning',
+            default => null,
+        };
     }
 
     public static function getRelations(): array

@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'asset_tag', 'serial', 'imei', 'manufacturer', 'model', 'android_version', 'security_patch',
     'agent_version_code', 'agent_version_name', 'group_id', 'policy_overrides', 'applied_policy_version',
     'fcm_token', 'state', 'enrolled_at', 'last_checkin_at', 'notice_acknowledged_at',
+    'battery_percent', 'battery_charging', 'network_type',
 ])]
 class Device extends Model
 {
@@ -42,6 +43,7 @@ class Device extends Model
             'enrolled_at' => 'datetime',
             'last_checkin_at' => 'datetime',
             'notice_acknowledged_at' => 'datetime',
+            'battery_charging' => 'boolean',
         ];
     }
 

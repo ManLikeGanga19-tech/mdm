@@ -4,10 +4,12 @@ namespace Tests\Feature;
 
 use App\Filament\Pages\ShiftHandover;
 use App\Filament\Resources\Devices\Pages\ViewDevice;
+use App\Filament\Resources\EnrollmentTokens\Pages\ManageEnrollmentTokens;
 use App\Mdm\Models\Clerk;
 use App\Mdm\Models\Command;
 use App\Mdm\Models\Device;
 use App\Mdm\Models\DeviceGroup;
+use App\Mdm\Models\EnrollmentToken;
 use App\Mdm\Models\Policy;
 use App\Mdm\Role;
 use App\Models\User;
@@ -99,6 +101,24 @@ class AdminSiteAccessTest extends TestCase
             ->assertHasNoActionErrors();
 
         $this->assertSame(['hotspot' => 'allowed'], $this->device->fresh()->policy_overrides);
+    }
+
+    public function test_super_admin_creates_an_enrollment_code_shown_once(): void
+    {
+        $this->actingAs($this->user(Role::SuperAdmin));
+        $this->get('/admin/enrollment-tokens')->assertOk();
+
+        Livewire::test(ManageEnrollmentTokens::class)
+            ->callAction('create', data: ['label' => 'Pilot', 'group_id' => $this->device->group_id, 'max_uses' => 6, 'valid_days' => 7])
+            ->assertHasNoActionErrors()
+            ->assertNotified('Enrollment code created');
+
+        $token = EnrollmentToken::sole();
+        $this->assertSame(6, $token->max_uses);
+        $this->assertSame(64, strlen($token->token_hash));
+
+        $this->actingAs($this->user(Role::Manager));
+        $this->get('/admin/enrollment-tokens')->assertForbidden();
     }
 
     public function test_coordinator_hands_a_phone_to_a_clerk(): void

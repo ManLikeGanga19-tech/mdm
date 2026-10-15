@@ -105,7 +105,17 @@ Usage collection uses `NetworkStatsManager`. A device owner is expected to get d
 - `mdm_agent_releases`: id, version_code, version_name, apk_path, sha256, cert_checksum, is_current, created_at
 - `mdm_alert_rules`: id, name, metric, threshold, window, recipients, enabled
 - `mdm_alerts`: id, rule_id, device_id, value, triggered_at, notified_at, acknowledged_at
-- `mdm_audit_log`: id, actor_id, action, subject, data (jsonb), created_at
+- `mdm_audit_log`: id, actor_id, action, subject_type, subject_id, data (jsonb), created_at
+- `mdm_clerks`: id, staff_number (unique), name, active — imported from the company staff spreadsheet
+- `mdm_device_assignments`: id, device_id, clerk_id, started_at, ended_at (null = holding it now), assigned_by, ended_by, note.
+  The 6 RugKings are shared per shift: coordinators record each handover, so usage and network activity are attributed
+  to the clerk who held the phone at that time (`HandoverService::holderAt`). Partial unique indexes: one open
+  assignment per device and per clerk.
+- `users.role`: `super_admin` (controls phones, manages accounts), `manager` (read-only), `coordinator` (shift
+  handover page only).
+
+`mdm_devices.asset_tag` is the phone's physical label (e.g. NP-0042); devices can be pre-registered by asset tag before
+enrollment. `assigned_user_id` was dropped in favour of `mdm_device_assignments`.
 
 All timestamps UTC. Raw/high-volume tables (`ingest_batches`, `network_logs`, `status_reports`) get retention jobs (default 90 days).
 

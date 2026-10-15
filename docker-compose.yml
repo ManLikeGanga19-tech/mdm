@@ -1,0 +1,66 @@
+# Noahport MDM — local development stack. Start: docker compose up -d   Admin site: http://localhost:8080/admin
+# (also from a phone on the same Wi-Fi: http://<this PC's LAN IP>:8080/admin).
+# The backend source is bind-mounted; vendor/ lives in a named volume so Composer's thousands of files stay fast and
+# out of OneDrive. Production (Contabo) gets its own compose file under deploy/ in Phase 6 work.
+name: noahport-mdm
+
+x-app: &app
+  image: noahport-mdm-app:dev
+  build:
+    context: deploy/docker
+    dockerfile: app.Dockerfile
+  volumes:
+    - ./backend:/app
+    - vendor:/app/vendor
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_started
+
+services:
+  app:
+    <<: *app
+    ports:
+      - "8080:80"
+    # FrankenPHP serves public/ over plain HTTP in development; TLS is the VPS reverse proxy's job.
+    command: frankenphp php-server --listen :80 --root /app/public
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost/up"]
+      interval: 15s
+      retries: 3
+
+  horizon:
+    <<: *app
+    command: php artisan horizon
+    healthcheck:
+      disable: true # the image's check probes the web server, which only the app service runs
+
+  scheduler:
+    <<: *app
+    command: php artisan schedule:work
+    healthcheck:
+      disable: true
+
+  postgres:
+    image: postgres:16.10-alpine
+    environment:
+      POSTGRES_DB: mdm
+      POSTGRES_USER: mdm
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-mdm-dev-only}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mdm -d mdm"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7.4-alpine
+    volumes:
+      - redisdata:/data
+
+volumes:
+  vendor:
+  pgdata:
+  redisdata:

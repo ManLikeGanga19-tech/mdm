@@ -32,9 +32,12 @@ Full design: `docs/ARCHITECTURE.md` — read it before making structural changes
 10. **Git:** commit and push as the repo owner only. Never add Claude as co-author, collaborator, or attribution (no `Co-Authored-By`, no "Generated with" lines).
 
 ## Commands
-Filled in during Phase 2 scaffolding:
-- Start stack: `TODO` (planned: `docker compose up -d`)
-- Install: `TODO`
-- Run queue worker: `TODO` (Horizon container)
-- Run tests: `TODO`
-- Lint/format: `TODO` (Pint; ktlint for agent)
+Run from the repo root (Docker; no local PHP):
+- Start stack: `docker compose up -d` → admin site http://localhost:8080/admin (phones on the same Wi-Fi: http://<PC LAN IP>:8080/admin)
+- Install PHP deps (into the `vendor` volume): `docker compose run --rm --no-deps app composer install`
+- Migrate + seed: `docker compose exec app php artisan migrate --seed`
+- Create an admin-site account: `docker compose exec app php artisan mdm:create-user <email> "<name>" --role=super_admin|manager|coordinator`
+- Queue worker: the `horizon` service (started by `up -d`)
+- Run tests: `docker compose exec app php artisan test` (Postgres database `mdm_test`)
+- Lint/format: `docker compose exec app vendor/bin/pint app tests database` (ktlint for the agent: not set up yet)
+- Never run `migrate:fresh` against the dev database casually: it deletes the admin accounts.

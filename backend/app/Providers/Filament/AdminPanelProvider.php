@@ -2,18 +2,15 @@
 
 namespace App\Providers\Filament;
 
-use App\Filament\Widgets\FleetOverview;
+use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
-use Filament\Enums\ThemeMode;
 use Filament\View\PanelsRenderHook;
-use Filament\Widgets\AccountWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -44,14 +41,9 @@ class AdminPanelProvider extends PanelProvider
             // Lets the admin add the site to a phone's home screen like an app.
             ->renderHook(PanelsRenderHook::HEAD_END, fn () => view('filament.pwa-head'))
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
+            // App\Filament\Pages\Dashboard (fleet overview) replaces Filament's default; no account card on it.
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
-            ->pages([
-                Dashboard::class,
-            ])
-            ->widgets([
-                FleetOverview::class,
-                AccountWidget::class,
-            ])
+            ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

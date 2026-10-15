@@ -26,6 +26,9 @@ class Device extends Model
 
     protected $table = 'mdm_devices';
 
+    /** Matches the column default, so a just-created phone knows it is pending before it is reloaded. */
+    protected $attributes = ['state' => self::STATE_PENDING];
+
     /** `id` stays the integer key; only `uuid` is generated. */
     public function uniqueIds(): array
     {

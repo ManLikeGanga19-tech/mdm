@@ -25,7 +25,8 @@ class PolicyBuilder
         $effective['blocked_apps'] = array_values(array_unique($effective['blocked_apps']));
 
         // Changes to either the group policy or the overrides must change the version the phone compares against.
-        $effective['version'] = crc32(json_encode([$policy?->id, $policy?->version, $device->policy_overrides]));
+        // Masked to 31 bits: it must fit Postgres `integer` (applied_policy_version) and the agent's Kotlin Int.
+        $effective['version'] = crc32(json_encode([$policy?->id, $policy?->version, $device->policy_overrides])) & 0x7FFFFFFF;
 
         return $effective;
     }

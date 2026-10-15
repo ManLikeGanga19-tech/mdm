@@ -7,7 +7,7 @@ _Last updated: 2026-10-15_
 ## Current phase
 **Phase 1 — Device spike.** Plan approved 2026-10-15. Spike app passes all checks possible on an Android 15
 emulator (device owner, all-app usage stats, network logging, app suspend/hide, lock, reboot). **Hardware testing next**
-(non-RugKing test phone at work, then a RugKing). Procedure, QR steps and results: `docs/spike-report.md`.
+(non-RugKing test phone at work, then a RugKing). Procedure, QR steps and results: `docs/spike-report.md`. Step-by-step guide for testing on a company phone: `docs/TESTING-AT-WORK.md`.
 
 ## Decisions made
 | Topic | Decision |

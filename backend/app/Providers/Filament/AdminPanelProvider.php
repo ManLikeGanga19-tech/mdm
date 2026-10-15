@@ -11,6 +11,7 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\Enums\ThemeMode;
 use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -32,12 +33,12 @@ class AdminPanelProvider extends PanelProvider
             ->profile(isSimple: false) // lets every account change its own password
             ->brandName('Noahport MDM')
             ->favicon(asset('icons/icon-192.png'))
-            // Company look: white with blue (light mode only).
+            // Company look: white with blue by default; users can switch to dark in the account menu.
             ->colors([
                 'primary' => Color::Blue,
                 'gray' => Color::Slate,
             ])
-            ->darkMode(false)
+            ->defaultThemeMode(ThemeMode::Light)
             ->databaseNotifications()
             ->sidebarCollapsibleOnDesktop()
             // Lets the admin add the site to a phone's home screen like an app.

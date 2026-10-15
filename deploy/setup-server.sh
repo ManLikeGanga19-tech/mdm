@@ -39,6 +39,9 @@ MAIL_MAILER=log
 EOF
 fi
 
+# Server-only secret files (Firebase service account), mounted read-only into the app containers.
+mkdir -p secrets && chmod 700 secrets
+
 # 2. Network shared with the edge Caddy only.
 docker network inspect mdm-edge-net >/dev/null 2>&1 || docker network create mdm-edge-net >/dev/null
 

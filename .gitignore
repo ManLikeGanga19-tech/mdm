@@ -36,3 +36,4 @@ enroll/NoahportEnroll/obj/
 
 # Firebase client config for the agent (from the Firebase console; kept out of the public repo)
 agent-app/app/google-services.json
+deploy/secrets/

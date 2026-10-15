@@ -17,6 +17,7 @@ that goes stale when ShuleHQ's deploy replaces the host file; reloading it silen
 | Secrets (server only) | `/opt/noahport-mdm/deploy/.env` (DB password), `deploy/.env.production` (Laravel) |
 | Site block / guard | `/opt/caddy-sites/mdm.caddy`, `/opt/caddy-sites/mdm-guard.sh`, systemd `mdm-edge-guard.{path,timer}` |
 | Network to the edge | `mdm-edge-net` (only `sms-caddy` and our app are on it) |
+| Firebase key | `/opt/noahport-mdm/deploy/secrets/firebase-sa.json` (mode 600; mounted at `/run/secrets/mdm/`), enabled by `FCM_PROJECT_ID` + `FCM_CREDENTIALS_PATH` in `.env.production` |
 | Backups | `/opt/noahport-mdm/backups`, nightly 02:30, 14 days (`deploy/backup.sh`) |
 | Memory limits | app 512 MB, horizon 384 MB, scheduler 192 MB, postgres 512 MB, redis 128 MB |
 

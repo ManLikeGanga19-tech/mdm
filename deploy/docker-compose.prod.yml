@@ -9,6 +9,7 @@ x-app: &app
   volumes:
     - ./.env.production:/app/.env:ro
     - storage:/app/storage
+    - ./secrets:/run/secrets/mdm:ro # e.g. firebase-sa.json (server only, never in git)
   depends_on:
     postgres:
       condition: service_healthy

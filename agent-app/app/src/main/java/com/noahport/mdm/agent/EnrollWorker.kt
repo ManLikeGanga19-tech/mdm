@@ -53,6 +53,7 @@ class EnrollWorker(context: Context, params: WorkerParameters) : Worker(context,
 
         CommandRunner.provisionResetToken(ctx)
         Agent.schedulePeriodicCheckin(ctx)
+        AgentService.ensureRunning(ctx)
         Agent.checkInNow(ctx)
         return Result.success()
     }

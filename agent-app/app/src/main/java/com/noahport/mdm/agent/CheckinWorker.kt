@@ -19,6 +19,7 @@ class CheckinWorker(context: Context, params: WorkerParameters) : Worker(context
         val server = prefs.getString(Agent.KEY_SERVER, null) ?: return Result.success() // not enrolled
         val token = SecureStore.getString(ctx, Agent.SECRET_DEVICE_TOKEN) ?: return Result.success()
         val api = ApiClient(server, token)
+        AgentService.ensureRunning(ctx) // restarts it if Android ever stopped it
         val enforcer = PolicyEnforcer(ctx)
 
         val response = try {

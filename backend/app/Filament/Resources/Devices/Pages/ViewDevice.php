@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Devices\Pages;
 
 use App\Filament\Resources\Devices\DeviceResource;
+use App\Filament\Resources\Devices\Widgets\DeviceLiveStatus;
 use App\Mdm\Models\Command;
 use App\Mdm\Models\Device;
 use App\Mdm\Services\CommandService;
@@ -50,6 +51,11 @@ class ViewDevice extends ViewRecord
             ])->visible($superAdmin)->label('More')->button()->color('gray'),
             EditAction::make()->color('gray'),
         ];
+    }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [DeviceLiveStatus::class];
     }
 
     private function commandAction(string $type, Heroicon $icon, bool $confirm): Action

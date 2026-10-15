@@ -48,7 +48,10 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         dpm = getSystemService(DevicePolicyManager::class.java)
-        if (Agent.isEnrolled(this)) Agent.schedulePeriodicCheckin(this) // KEEP: no-op when already scheduled
+        if (Agent.isEnrolled(this)) {
+            Agent.schedulePeriodicCheckin(this) // KEEP: no-op when already scheduled
+            AgentService.ensureRunning(this)
+        }
         if (!isTestBuild) {
             setContentView(withSystemBarPadding(ScrollView(this).apply { addView(NoticeView(context)) }))
             return

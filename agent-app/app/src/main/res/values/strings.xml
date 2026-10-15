@@ -23,6 +23,8 @@
         \n• Lock or restart the phone, reset its screen lock, or erase it if it is lost or stolen
         \n\nNetwork activity records are kept for 90 days. Only Noahport IT administrators can see this information. It is used to manage company phones, control data costs and keep them secure, as described in Noahport\'s device-use policy.
         \n\nQuestions? Contact Noahport IT.</string>
+    <string name="service_channel">Phone management</string>
+    <string name="service_text">Tap to see what Noahport can and cannot see</string>
     <string name="notice_acknowledge">I understand</string>
     <string name="notice_acknowledged">Acknowledged on %1$s</string>
     <string name="notice_device_info">Asset tag: %1$s\nIssued to: %2$s\nManaged by Noahport: %3$s\nAgent version: %4$s\nLast sync with Noahport: %5$s</string>

@@ -164,7 +164,10 @@ class DeviceResource extends Resource
                     ->color(fn (string $state) => $state === Device::STATE_ENROLLED ? 'success' : 'gray'),
                 TextColumn::make('last_checkin_at')->label('Last check-in')->since()->sortable()->placeholder('Never'),
                 TextColumn::make('battery_percent')->label('Battery')->sortable()->placeholder('-')
-                    ->formatStateUsing(fn (Device $record) => self::battery($record))
+                    ->formatStateUsing(fn (Device $record) => $record->battery_percent.'%')
+                    ->icon(fn (Device $record) => $record->battery_charging ? 'heroicon-m-bolt' : null)
+                    ->iconColor('success')
+                    ->tooltip(fn (Device $record) => $record->battery_charging ? 'Charging' : null)
                     ->color(fn (Device $record) => self::batteryColor($record)),
                 TextColumn::make('model')->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('agent_version_name')->label('Agent')->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
@@ -177,6 +180,7 @@ class DeviceResource extends Resource
                     Device::STATE_RETIRED => 'Retired',
                 ]),
             ])
+            ->poll('5s') // phones report changes as they happen; keep the list current without reloading
             ->recordActions([
                 ViewAction::make(),
             ]);

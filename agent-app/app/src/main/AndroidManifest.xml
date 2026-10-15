@@ -5,6 +5,12 @@
     <!-- Backend API calls; without it NetworkInterface.getNetworkInterfaces() also returns null. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Always-on agent service (AgentService): foreground type systemExempted is allowed for device owner apps. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <!-- Lets usage stats and network logs be labelled with package names (Android 11+ package visibility). -->
     <uses-permission
         android:name="android.permission.QUERY_ALL_PACKAGES"
@@ -54,6 +60,23 @@
             android:exported="true"
             android:permission="android.permission.DUMP"
             tools:ignore="ProtectedPermissions" />
+
+        <!-- Lint assumes systemExempted also needs an exact-alarm permission; the platform docs
+             (ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED) allow it for device owner apps on their own. -->
+        <service
+            android:name=".AgentService"
+            android:exported="false"
+            android:foregroundServiceType="systemExempted"
+            tools:ignore="ForegroundServicePermission" />
+
+        <receiver
+            android:name=".BootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
 
         <!-- Firebase "check in now" wake-ups from the server (PushService). -->
         <service

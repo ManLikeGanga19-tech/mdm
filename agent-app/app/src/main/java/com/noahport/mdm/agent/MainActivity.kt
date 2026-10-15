@@ -6,6 +6,7 @@ import android.app.admin.DevicePolicyManager
 import android.app.usage.NetworkStats
 import android.app.usage.NetworkStatsManager
 import android.app.usage.UsageStatsManager
+import android.content.Intent
 import android.graphics.Typeface
 import android.net.ConnectivityManager
 import android.os.Build
@@ -106,6 +107,7 @@ class MainActivity : Activity() {
         }
 
         controls.section("Housekeeping")
+        controls.button("Share log (email, WhatsApp, ...)") { shareLog() }
         controls.button("Clear log") {
             SpikeLog.clear(this)
             logView.text = ""
@@ -263,6 +265,16 @@ class MainActivity : Activity() {
             if (dpm.isAdminActive(admin)) dpm.removeActiveAdmin(admin)
         }
         showStatus()
+    }
+
+    /** Lets testers send results without adb. Keeps the tail: intent extras are limited to well under 1 MB. */
+    private fun shareLog() {
+        val log = SpikeLog.read(this) + "\n" + SoakWorker.report(this)
+        val send = Intent(Intent.ACTION_SEND)
+            .setType("text/plain")
+            .putExtra(Intent.EXTRA_SUBJECT, "Noahport spike log ${Build.MANUFACTURER} ${Build.MODEL}")
+            .putExtra(Intent.EXTRA_TEXT, log.takeLast(200_000))
+        startActivity(Intent.createChooser(send, "Share spike log"))
     }
 
     private fun dpmCall(name: String, block: () -> Unit) {

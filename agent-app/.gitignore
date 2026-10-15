@@ -8,3 +8,4 @@ local.properties
 # QR provisioning outputs (may contain Wi-Fi passwords / enrollment tokens)
 provisioning*.json
 qr*.png
+node_modules/

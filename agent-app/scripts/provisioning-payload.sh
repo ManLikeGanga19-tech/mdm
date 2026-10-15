@@ -4,8 +4,8 @@
 # Usage: scripts/provisioning-payload.sh <signed.apk> <https-download-url> [out.json]
 # Optional env: WIFI_SSID, WIFI_PASSWORD, WIFI_SECURITY (WPA|WEP|NONE), API_BASE_URL, ENROLLMENT_TOKEN
 #
-# Render the QR locally (keeps tokens off third-party sites):
-#   npx --yes qrcode@1.5.4 -o qr.png "$(cat out.json)"
+# Render the QR locally (keeps tokens off third-party sites; verifies it decodes back):
+#   cd scripts/qr && npm install && node make-qr.js ../../out.json ../../qr.png
 set -euo pipefail
 
 apk="${1:?signed apk path}"
@@ -13,6 +13,7 @@ url="${2:?https download url for the apk}"
 out="${3:-provisioning.json}"
 
 sdk="${ANDROID_HOME:-$LOCALAPPDATA/Android/Sdk}"
+export JAVA_HOME="${JAVA_HOME:-/c/Program Files/Android/Android Studio/jbr}" # apksigner needs Java
 build_tools="$(ls -d "$sdk"/build-tools/* | sort -V | tail -1)"
 apksigner="$build_tools/apksigner"
 [ -f "$apksigner.bat" ] && apksigner="$apksigner.bat"

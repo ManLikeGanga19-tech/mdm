@@ -20,6 +20,18 @@ Undo on a test phone: **Release device owner / admin**, then uninstall normally.
 
 If `set-device-owner` says "already some accounts" while Settings shows none, the phone has leftover account state: factory reset again. (Seen on a previously used emulator; a fresh one worked.)
 
+## Testing away from the dev PC (e.g. company laptop)
+The APK and QR are built on the dev PC; the laptop only needs adb, with no Android Studio and no install rights.
+1. On the dev PC: build, then copy `app-debug.apk` and the QR into `OneDrive\Desktop\noahport-work-kit\`
+   (already done 2026-10-15), and publish the APK as the `spike-apk` GitHub release (QR step A2).
+2. On the laptop: download **SDK Platform-Tools for Windows** (zip, from developer.android.com/tools/releases/platform-tools)
+   and unzip it. Get `app-debug.apk` from OneDrive (onedrive.live.com) or the GitHub release.
+3. In a terminal inside the unzipped `platform-tools` folder:
+   `.\adb install path\to\app-debug.apk`, then `.\adb shell dpm set-device-owner com.noahport.mdm.agent/.AdminReceiver`.
+   The laptop may need the phone maker's USB driver if `.\adb devices` shows nothing.
+4. Send results with the app's **Share log** button (email/WhatsApp), so no adb is needed to collect them.
+QR testing needs no laptop at all: show `qr.png` on any screen (or a printout) and scan it from the reset phone.
+
 ## Procedure per check
 | # | Check | How | Pass when |
 |---|---|---|---|
@@ -50,8 +62,10 @@ QR setup is how the real fleet gets enrolled: no USB cable, no adb. It needs a *
    WIFI_SSID="OfficeWifi" WIFI_PASSWORD="secret" \
      scripts/provisioning-payload.sh app/build/outputs/apk/debug/app-debug.apk \
      https://github.com/ManLikeGanga19-tech/mdm/releases/download/spike-apk/app-debug.apk provisioning.json
-   npx --yes qrcode@1.5.4 -o qr.png "$(cat provisioning.json)"
+   (cd scripts/qr && npm install && node make-qr.js ../../provisioning.json ../../qr.png)
    ```
+   `make-qr.js` decodes the image back and prints `OK` only if it matches the payload. Don't use `npx qrcode "$(cat ...)"`
+   on Windows: the npx wrapper mangles the JSON quotes and produces a QR code of the wrong content.
    Open `qr.png` on the PC screen. `provisioning.json` and `qr.png` contain the Wi-Fi password: don't commit them, and delete them after the test.
 
 ### B. Enroll the phone

@@ -58,6 +58,12 @@ class CheckinWorker(context: Context, params: WorkerParameters) : Worker(context
         if (applied && enforcer.appliedVersion != before) {
             runCatching { api.post("checkin", status(ctx, enforcer.appliedVersion)) }
         }
+
+        // Telemetry (Milestone B): queue new hourly usage and app-list changes, then upload everything waiting.
+        // Commands come first above, so a slow upload never delays them.
+        runCatching { UsageCollector(ctx).collect() }.onFailure { SpikeLog.log(ctx, "FAIL usage collection: $it") }
+        runCatching { InventoryCollector(ctx).collectIfChanged() }.onFailure { SpikeLog.log(ctx, "FAIL inventory: $it") }
+        Outbox.flush(ctx, api)
         return Result.success()
     }
 

@@ -7,6 +7,9 @@ import android.app.admin.DnsEvent
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import org.json.JSONArray
+import org.json.JSONObject
+import java.time.Instant
 import kotlin.concurrent.thread
 
 class AdminReceiver : DeviceAdminReceiver() {
@@ -60,6 +63,25 @@ class AdminReceiver : DeviceAdminReceiver() {
         }
         connects.take(5).forEach {
             SpikeLog.log(context, "  CONNECT ${it.packageName} ${it.inetAddress.hostAddress}:${it.port}")
+        }
+
+        // Upload the whole batch (via the outbox, so it survives being offline) and sync soon.
+        val payload = JSONArray()
+        dns.forEach {
+            payload.put(
+                JSONObject().put("type", "dns").put("package", it.packageName).put("host", it.hostname)
+                    .put("ip", it.inetAddresses.firstOrNull()?.hostAddress).put("at", Instant.ofEpochMilli(it.timestamp).toString()),
+            )
+        }
+        connects.forEach {
+            payload.put(
+                JSONObject().put("type", "connect").put("package", it.packageName)
+                    .put("ip", it.inetAddress.hostAddress).put("port", it.port).put("at", Instant.ofEpochMilli(it.timestamp).toString()),
+            )
+        }
+        if (payload.length() > 0 && Agent.isEnrolled(context)) {
+            Outbox.add(context, "network-logs", JSONObject().put("events", payload))
+            Agent.checkInNow(context)
         }
     }
 

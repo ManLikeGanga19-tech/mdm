@@ -1,6 +1,17 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
 }
+
+// Release signing key lives outside the repo (CLAUDE.md rule 3). Override the path with
+// -Pnoahport.signing=<file> or NOAHPORT_SIGNING; without the file, release builds are unsigned.
+val signingFile = file(
+    providers.gradleProperty("noahport.signing").orNull
+        ?: System.getenv("NOAHPORT_SIGNING")
+        ?: "${System.getProperty("user.home")}/.noahport-signing/release.properties"
+)
+val signing = Properties().apply { if (signingFile.exists()) signingFile.inputStream().use { load(it) } }
 
 android {
     namespace = "com.noahport.mdm.agent"
@@ -13,6 +24,23 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0-spike"
+    }
+
+    signingConfigs {
+        if (signingFile.exists()) {
+            create("release") {
+                storeFile = file(signing.getProperty("storeFile"))
+                storePassword = signing.getProperty("storePassword")
+                keyAlias = signing.getProperty("keyAlias")
+                keyPassword = signing.getProperty("keyPassword")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig = signingConfigs.findByName("release")
+        }
     }
 
     compileOptions {

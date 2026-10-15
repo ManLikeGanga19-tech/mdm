@@ -7,6 +7,7 @@ import android.app.usage.NetworkStats
 import android.app.usage.NetworkStatsManager
 import android.app.usage.UsageStatsManager
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.graphics.Typeface
 import android.net.ConnectivityManager
 import android.os.Build
@@ -29,7 +30,10 @@ import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 
 /**
- * Phase 1 spike screen: one button per device-owner capability we need to prove on real hardware.
+ * Release builds (staff phones): only the "managed by Noahport" [NoticeView], with no controls, so staff can't
+ * change policy from the phone.
+ *
+ * Debug builds: the Phase 1 spike screen, one button per device-owner capability we need to prove on real hardware.
  * Every result is written to [SpikeLog] as PASS/FAIL/INFO for docs/spike-report.md.
  */
 class MainActivity : Activity() {
@@ -44,6 +48,10 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         dpm = getSystemService(DevicePolicyManager::class.java)
+        if (!isTestBuild) {
+            setContentView(withSystemBarPadding(ScrollView(this).apply { addView(NoticeView(context)) }))
+            return
+        }
         setContentView(buildUi())
         logView.text = SpikeLog.read(this)
         scrollLogToEnd()
@@ -52,6 +60,7 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        if (!isTestBuild) return
         SpikeLog.listener = { line ->
             runOnUiThread {
                 logView.append(line + "\n")
@@ -70,6 +79,15 @@ class MainActivity : Activity() {
 
         controls.section("Status")
         controls.button("Show status") { showStatus() }
+        controls.button("Show staff notice (what release builds display)") {
+            AlertDialog.Builder(this)
+                .setView(ScrollView(this).apply {
+                    setPadding(dp(20), dp(16), dp(20), 0)
+                    addView(NoticeView(context))
+                })
+                .setPositiveButton("Close", null)
+                .show()
+        }
 
         controls.section("Hotspot (DISALLOW_CONFIG_TETHERING)")
         controls.button("Block hotspot") { setHotspotBlocked(true) }
@@ -123,20 +141,26 @@ class MainActivity : Activity() {
         }
         logScroll = ScrollView(this).apply { addView(logView) }
 
-        return LinearLayout(this).apply {
+        return withSystemBarPadding(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            val pad = dp(12)
-            setPadding(pad, pad, pad, pad)
-            // targetSdk 35+ is edge-to-edge: keep content clear of the system bars.
-            setOnApplyWindowInsetsListener { v, insets ->
-                val bars = insets.getInsets(WindowInsets.Type.systemBars())
-                v.setPadding(pad + bars.left, pad + bars.top, pad + bars.right, pad + bars.bottom)
-                insets
-            }
             addView(ScrollView(context).apply { addView(controls) }, LinearLayout.LayoutParams(MATCH, 0, 1f))
             addView(logScroll, LinearLayout.LayoutParams(MATCH, 0, 1f))
+        })
+    }
+
+    /** targetSdk 35+ is edge-to-edge: keep content clear of the system bars. */
+    private fun <T : View> withSystemBarPadding(view: T): T = view.apply {
+        val pad = dp(12)
+        setPadding(pad, pad, pad, pad)
+        setOnApplyWindowInsetsListener { v, insets ->
+            val bars = insets.getInsets(WindowInsets.Type.systemBars())
+            v.setPadding(pad + bars.left, pad + bars.top, pad + bars.right, pad + bars.bottom)
+            insets
         }
     }
+
+    /** Debuggable = a test build with the spike controls; release builds (the permanent key) are for staff phones. */
+    private val isTestBuild get() = (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
 
     private fun showStatus() {
         val power = getSystemService(PowerManager::class.java)

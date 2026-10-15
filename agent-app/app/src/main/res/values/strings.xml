@@ -1,4 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Noahport MDM Agent</string>
+
+    <!-- Staff notice (Kenya Data Protection Act 2019; Play Protect review). Keep in line with docs/ARCHITECTURE.md §1
+         and docs/play-protect-appeal.md whenever what the agent collects changes. -->
+    <string name="notice_title">This phone is managed by Noahport</string>
+    <!-- Line breaks are the explicit \n escapes: aapt collapses source newlines into spaces. Each source line starts
+         with \n so that collapsed space lands, invisibly, at the end of the previous line. -->
+    <string name="notice_body">This is a company phone. It belongs to Noahport and is managed by Noahport IT using this app.
+        \n\n<b>What Noahport can see</b>
+        \n• Phone details: model, Android version, security updates
+        \n• Which apps are installed
+        \n• How much mobile data and Wi-Fi each app uses, including data shared through the hotspot
+        \n• Which websites and online services the phone connects to (their names and addresses, not what you read, type or send)
+        \n\n<b>What Noahport cannot see</b>
+        \n• Your messages, calls, contacts, photos, videos or files
+        \n• Your location
+        \n• What is on your screen, what you type, or your passwords
+        \n\n<b>What Noahport IT can do</b>
+        \n• Allow or block the hotspot and certain apps
+        \n• Set screen-lock rules
+        \n• Lock or restart the phone, reset its screen lock, or erase it if it is lost or stolen
+        \n\nNetwork activity records are kept for 90 days. Only Noahport IT administrators can see this information. It is used to manage company phones, control data costs and keep them secure, as described in Noahport\'s device-use policy.
+        \n\nQuestions? Contact Noahport IT.</string>
+    <string name="notice_acknowledge">I understand</string>
+    <string name="notice_acknowledged">Acknowledged on %1$s</string>
+    <string name="notice_device_info">Asset tag: %1$s\nIssued to: %2$s\nManaged by Noahport: %3$s\nAgent version: %4$s</string>
+    <string name="notice_not_set">not set</string>
+    <string name="notice_yes">yes</string>
+    <string name="notice_no">no</string>
 </resources>

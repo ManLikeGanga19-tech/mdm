@@ -14,11 +14,9 @@ Application (PHA). Until approved, phones are enrolled over USB (`enroll/Noahpor
 3. [ ] **Developer verification + app registration:** register package `com.noahport.mdm.agent` with the release
    signing certificate below. Google's DPC allowlisting page says custom DPC developers must complete Android's
    verification process.
-4. [ ] **Before submitting, the agent should:** show a clear "This phone is managed by Noahport" notice (with what is
-   collected) on first launch, and the release build should hide the spike's test-only buttons
-   (e.g. "Release device owner"). Reviewers look at the APK; a test harness invites questions.
-   Decide: submit now with the 0.1.1-spike build to start the clock, or wait for those changes (recommended: make the
-   two changes first; they are small).
+4. [x] **Agent ready for review (0.2.0, 2026-10-15):** release builds show only the "This phone is managed by Noahport"
+   notice (what is and isn't collected, what IT can do, the phone's label, an "I understand" acknowledgement) and
+   no controls; the spike's test buttons exist only in debug builds.
 5. [ ] Submit the form below and record the date here and in `docs/STATUS.md`.
 
 ## Where
@@ -37,7 +35,7 @@ description of the use case. Fill in whatever it asks from the table below; past
 | Signing certificate SHA-256 | `07:E0:6E:5A:07:BF:E4:1F:F5:1D:4A:CA:CE:52:7B:4D:8C:46:F7:72:CB:28:AF:96:68:3F:95:79:41:27:22:D4` |
 | Certificate subject | `CN=Noahport MDM Agent, O=Noahport, C=KE` |
 | APK file | `agent-app/app/build/outputs/apk/release/app-release.apk` (rebuild with `scripts/make-enroll-kit.sh`; attach the build you submit) |
-| APK SHA-256 (0.1.1-spike, versionCode 2) | `fe94d2cd3d8bba5966e302792c3d1249c16a76c39ab558cc7a5202fdd0858a79` — changes with every build; recompute with `sha256sum` |
+| APK SHA-256 (0.2.0, versionCode 3) | `0439ce3d795aee185df4bb841652b1d161b279bf8fa4b94b000fc00d6f04f3f0` — changes with every build; recompute with `sha256sum` |
 | Developer / organization | Noahport (legal name exactly as on the D-U-N-S record) |
 | Developer Console account ID | _fill in after step 2_ |
 | Contact email | _company address, not a personal one_ |
@@ -73,8 +71,9 @@ description of the use case. Fill in whatever it asks from the table below; past
 > receiver.
 >
 > Transparency: the phone is enrolled only by Noahport IT with physical access to a factory-reset device. Android
-> shows the "This device is managed by your organization" and network-monitoring notices, and the agent shows a
-> notice of what is collected. Staff receive and sign Noahport's device-use policy, which explains the monitoring, in
+> shows the "This device is managed by your organization" and network-monitoring notices. The agent's only screen is
+> a notice titled "This phone is managed by Noahport" that lists what is and is not collected and what IT can do,
+> which the staff member acknowledges; the app offers no other controls on the phone. Staff receive and sign Noahport's device-use policy, which explains the monitoring, in
 > line with the Kenya Data Protection Act 2019. Network-log data is kept for a limited period (90 days by default) and
 > is visible only to Noahport's IT administrators.
 >

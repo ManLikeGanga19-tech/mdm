@@ -68,6 +68,26 @@ class Device extends Model
         return $this->hasMany(Command::class)->latest();
     }
 
+    public function statusReports(): HasMany
+    {
+        return $this->hasMany(StatusReport::class);
+    }
+
+    public function usageSamples(): HasMany
+    {
+        return $this->hasMany(UsageSample::class);
+    }
+
+    public function networkLogs(): HasMany
+    {
+        return $this->hasMany(NetworkLog::class);
+    }
+
+    public function apps(): HasMany
+    {
+        return $this->hasMany(AppInventory::class);
+    }
+
     public function credentials(): HasMany
     {
         return $this->hasMany(DeviceCredential::class);

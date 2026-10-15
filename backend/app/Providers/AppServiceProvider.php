@@ -26,8 +26,9 @@ class AppServiceProvider extends ServiceProvider
         // Stored in UTC (CLAUDE.md rule 9); shown to admins in Kenyan time.
         FilamentTimezone::set(config('app.display_timezone'));
 
-        // Device API: per phone credential (or per IP before enrollment). A phone checks in every ~15 min.
-        RateLimiter::for('device', fn (Request $request) => Limit::perMinute(30)
+        // Device API: per phone credential (or per IP before enrollment). Check-ins every ~15 min, uploads in bursts,
+        // and live view posts every few seconds while an admin watches.
+        RateLimiter::for('device', fn (Request $request) => Limit::perMinute(120)
             ->by($request->bearerToken() ? 'cred:'.sha1($request->bearerToken()) : 'ip:'.$request->ip()));
     }
 }

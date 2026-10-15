@@ -41,6 +41,14 @@ class CheckinController
         }
         $device->save();
 
+        // Battery and network history (Milestone B), one row per check-in.
+        $device->statusReports()->create([
+            'battery_percent' => $data['battery_percent'] ?? null,
+            'battery_charging' => $data['battery_charging'] ?? null,
+            'network_type' => $data['network_type'] ?? null,
+            'reported_at' => now(),
+        ]);
+
         $commands = $device->commands()->whereIn('status', ['queued', 'delivered'])->oldest()->get();
         Command::query()->whereKey($commands->where('status', 'queued')->modelKeys())
             ->update(['status' => 'delivered', 'delivered_at' => now()]);

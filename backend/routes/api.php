@@ -4,6 +4,7 @@ use App\Mdm\Http\Controllers\Device\CheckinController;
 use App\Mdm\Http\Controllers\Device\CommandResultController;
 use App\Mdm\Http\Controllers\Device\EnrollController;
 use App\Mdm\Http\Controllers\Device\EnrollmentCodeController;
+use App\Mdm\Http\Controllers\Device\IngestController;
 use App\Mdm\Http\Middleware\AuthenticateDevice;
 use Illuminate\Support\Facades\Route;
 
@@ -15,5 +16,8 @@ Route::prefix('device/v1')->middleware('throttle:device')->group(function () {
     Route::middleware(AuthenticateDevice::class)->group(function () {
         Route::post('checkin', CheckinController::class);
         Route::post('commands/{uuid}/result', CommandResultController::class);
+        Route::post('usage', IngestController::class)->defaults('kind', 'usage');
+        Route::post('network-logs', IngestController::class)->defaults('kind', 'network_logs');
+        Route::post('inventory', IngestController::class)->defaults('kind', 'inventory');
     });
 });

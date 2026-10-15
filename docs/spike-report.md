@@ -6,18 +6,19 @@ Spike app: `agent-app/` (`com.noahport.mdm.agent`, minSdk 33, debug build).
 ## Test devices
 | Device | Android | Notes |
 |---|---|---|
-| Non-RugKing test phone (model TBD) | TBD | First round. Checks the Android APIs; **not** valid for Ulefone battery behaviour |
-| Ulefone RugKing (model TBD) | 13–15 | Second round: repeat at least provisioning, hotspot and the 24 h soak |
+| Android emulator (Pixel 9 image, Google Play) | 15 (SDK 35) | 2026-10-15. Checks the APIs only: no real hotspot, no OEM battery management |
+| Non-RugKing test phone (model TBD) | TBD | Real hardware, but **not** valid for Ulefone battery behaviour |
+| Ulefone RugKing (model TBD) | 13–15 | Repeat at least QR provisioning, hotspot and the 24 h soak |
 
 ## Setup (adb, quickest)
-1. Factory reset the phone. In setup, skip adding a Google account (`set-device-owner` fails if any account exists). Enable Developer options and USB debugging.
-2. Build: `cd agent-app && ./gradlew assembleDebug`. APK: `agent-app/app/build/outputs/apk/debug/app-debug.apk`.
-3. `adb install agent-app/app/build/outputs/apk/debug/app-debug.apk`
-4. `adb shell dpm set-device-owner com.noahport.mdm.agent/.AdminReceiver`
-5. Open **Noahport MDM Agent** and tap **Show status**. Expect `deviceOwner=true`.
+1. Factory reset the phone. In setup, **skip adding a Google account**: `set-device-owner` fails if any account exists. Enable Developer options (tap Build number 7 times) and USB debugging, then connect USB and accept the "Allow USB debugging" prompt.
+2. From `agent-app/` in Git Bash: `scripts/install-device-owner.sh` (builds, installs, sets device owner, opens the app).
+3. Tap **Show status**. Expect `deviceOwner=true`.
 
-Pull the log at any time: `adb exec-out run-as com.noahport.mdm.agent cat files/spike.log`.
-Undo on a test phone: **Release device owner**, then uninstall normally.
+Pull the log at any time: `adb exec-out run-as com.noahport.mdm.agent cat files/spike.log > spike.log`.
+Undo on a test phone: **Release device owner / admin**, then uninstall normally.
+
+If `set-device-owner` says "already some accounts" while Settings shows none, the phone has leftover account state: factory reset again. (Seen on a previously used emulator; a fresh one worked.)
 
 ## Procedure per check
 | # | Check | How | Pass when |
@@ -29,36 +30,67 @@ Undo on a test phone: **Release device owner**, then uninstall normally.
 | 5 | Tethering usage | Download ~50 MB on the laptop over the hotspot (mobile data), query again | `tethering` grows by about that amount on `mobile` |
 | 6 | Network logging | **Enable network logging**, browse, then `adb shell dpm force-network-logs` (or wait ~90 min) | `PASS network log batch` with DNS/connect events and package names |
 | 7 | Lock | **Lock now** | Screen locks |
-| 8 | Reboot | **Reboot** | Phone restarts; app is still device owner afterwards |
+| 8 | Reboot | **Reboot** | Phone restarts; app is still device owner afterwards (no PASS line: the phone restarts before the call returns) |
 | 9 | App blocking | Package `com.android.chrome`: suspend/unsuspend, hide/unhide | Suspended app greyed out; hidden app gone from launcher; both reversible |
-| 10 | QR provisioning | See below | Phone ends set up with the agent as device owner; log shows `GET_PROVISIONING_MODE` and `ADMIN_POLICY_COMPLIANCE` with the admin extras |
+| 10 | QR provisioning | See next section | All QR checks below pass |
 | 11 | 24 h soak | **Start soak**, leave the phone unplugged and idle for 24 h, then **Soak report** | ~96 runs, longest gap well under ~2 h (Doze defers jobs into maintenance windows; repeated multi-hour gaps = OEM killing) |
 
-## QR provisioning
-1. Upload `app-debug.apk` as a release asset on a **temporary** GitHub release (or any HTTPS host).
-2. `agent-app/scripts/provisioning-payload.sh agent-app/app/build/outputs/apk/debug/app-debug.apk <asset-url> provisioning.json`
-   (set `WIFI_SSID`/`WIFI_PASSWORD` to let the phone get online on the welcome screen).
-3. `npx --yes qrcode@1.5.4 -o qr.png "$(cat provisioning.json)"`, then factory reset the phone, tap the welcome screen 6 times, and scan.
+## QR provisioning test
+QR setup is how the real fleet gets enrolled: no USB cable, no adb. It needs a **factory-reset** phone.
 
-Unverified points the QR test settles:
-- GitHub release asset URLs redirect to another host; confirm the provisioning downloader follows the redirect. If it doesn't, host the APK at a direct URL.
-- The checksum is URL-safe base64 **without** `=` padding (the common practice; the docs don't say).
-- The debug APK is signed with this PC's debug keystore. Production QR codes will use the release keystore checksum.
+### A. Prepare the QR code (on this PC)
+1. Build: `cd agent-app && JAVA_HOME="/c/Program Files/Android/Android Studio/jbr" ./gradlew assembleDebug`.
+   Build and generate the QR on the **same PC**: the checksum comes from this PC's debug signing key.
+2. Host the APK: on GitHub open the repo → **Releases** → **Draft a new release**. Tag `spike-apk`, title "Spike APK (temporary)", tick **Set as a pre-release**, attach `agent-app/app/build/outputs/apk/debug/app-debug.apk`, then **Publish**.
+   The download URL is `https://github.com/ManLikeGanga19-tech/mdm/releases/download/spike-apk/app-debug.apk`. Paste it into a browser to check it downloads.
+   The repo is public, so anyone with the link can download this APK. Delete the release after the test.
+3. Generate the payload, adding the Wi-Fi the phone should join during setup:
+   ```bash
+   cd agent-app
+   WIFI_SSID="OfficeWifi" WIFI_PASSWORD="secret" \
+     scripts/provisioning-payload.sh app/build/outputs/apk/debug/app-debug.apk \
+     https://github.com/ManLikeGanga19-tech/mdm/releases/download/spike-apk/app-debug.apk provisioning.json
+   npx --yes qrcode@1.5.4 -o qr.png "$(cat provisioning.json)"
+   ```
+   Open `qr.png` on the PC screen. `provisioning.json` and `qr.png` contain the Wi-Fi password: don't commit them, and delete them after the test.
+
+### B. Enroll the phone
+1. Factory reset (Settings → System → Reset options → Erase all data). Wait for the **welcome / "Hi there"** screen. Don't press Start.
+2. Tap the **same spot on the welcome screen 6 times** quickly. A QR scanner should open (on some phones it first asks for Wi-Fi).
+3. Scan `qr.png`. The phone should show "This device belongs to your organization", download the agent, and finish setup.
+4. Open **Noahport MDM Agent** and tap **Show status**.
+
+### C. Record these results (send me the screenshots and `spike.log`)
+| QR check | What to look for | If it fails |
+|---|---|---|
+| Q1 Scanner opens | 6 taps open a QR scanner | Note the Android version; some builds need taps on a specific area, or Wi-Fi first |
+| Q2 Wi-Fi from QR | Phone joins the Wi-Fi without typing it | Check SSID/password spelling; the security type must be WPA, WEP or NONE |
+| Q3 APK download | No "couldn't download" error | GitHub redirects release downloads to another host. If this fails, the APK needs a direct (non-redirect) HTTPS URL |
+| Q4 Checksum accepted | No "can't set up device / contact your IT admin" after the download | The checksum format is wrong: send me the exact message |
+| Q5 Device owner | **Show status** says `deviceOwner=true` | |
+| Q6 Provisioning callbacks | Log has `GET_PROVISIONING_MODE ...` and `ADMIN_POLICY_COMPLIANCE ... adminExtras={api_base_url=..., enrollment_token=spike-test}` | Admin extras missing means the backend can't receive enrollment tokens this way |
+| Q7 System apps kept | Camera, Chrome, Phone, Messages still present | `LEAVE_ALL_SYSTEM_APPS_ENABLED` not honoured; we'd need to re-enable apps ourselves |
+
+Take a photo of any error screen: those screens can't be screenshotted.
 
 ## Results
-| # | Check | Test phone | RugKing | Notes |
-|---|---|---|---|---|
-| 1 | Device owner via adb | pending | pending | |
-| 2 | Hotspot block (turns off active hotspot) | pending | pending | |
-| 3 | Hotspot unblock | pending | pending | |
-| 4 | All-UID usage without usage access | pending | pending | |
-| 5 | `UID_TETHERING` usage | pending | pending | |
-| 6 | Network logging batches | pending | pending | |
-| 7 | Lock | pending | pending | |
-| 8 | Reboot | pending | pending | |
-| 9 | App suspend / hide | pending | pending | |
-| 10 | QR provisioning | pending | pending | |
-| 11 | 24 h soak | pending | pending | Only the RugKing result counts |
+| # | Check | Emulator (A15) | Test phone | RugKing | Notes |
+|---|---|---|---|---|---|
+| 1 | Device owner via adb | PASS | pending | pending | Fails with "already some accounts" on a previously used emulator; fresh one fine |
+| 2 | Hotspot block (turns off active hotspot) | PASS (restriction set) | pending | pending | Emulator has no real hotspot; turn-off must be checked on hardware |
+| 3 | Hotspot unblock | PASS | pending | pending | |
+| 4 | All-UID usage without usage access | **PASS** | pending | pending | 15 UIDs on mobile and on Wi-Fi with no usage-access grant |
+| 5 | `UID_TETHERING` usage | n/a | pending | pending | Needs a real hotspot |
+| 6 | Network logging batches | **PASS** | pending | pending | 26 events (8 DNS, 18 connect) with package names, via `force-network-logs` |
+| 7 | Lock | PASS | pending | pending | |
+| 8 | Reboot | PASS | pending | pending | Still device owner after reboot |
+| 9 | App suspend / hide | PASS | pending | pending | Chrome suspended/unsuspended and hidden/unhidden |
+| 10 | QR provisioning | not tested | pending | pending | |
+| 11 | 24 h soak | n/a | pending | pending | Only the RugKing result counts |
+
+Other observations:
+- As device owner the app's standby bucket is `5` (EXEMPTED), even though it isn't on the battery-optimization allowlist. That's a good sign for background jobs; the RugKing soak still has to confirm it.
+- Bug found and fixed on the emulator: without the `INTERNET` permission, `NetworkInterface.getNetworkInterfaces()` returns null and crashed the app.
 
 ## Conclusions
-_To be written after testing._
+_To be written after hardware testing._

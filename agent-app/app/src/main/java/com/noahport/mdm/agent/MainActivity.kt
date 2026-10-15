@@ -110,7 +110,7 @@ class MainActivity : Activity() {
             SpikeLog.clear(this)
             logView.text = ""
         }
-        controls.button("Release device owner (test phones only)") {
+        controls.button("Release device owner / admin (test phones only)") {
             confirm("Remove device owner? The app loses all control and policies are lifted.") { releaseDeviceOwner() }
         }
 
@@ -169,7 +169,12 @@ class MainActivity : Activity() {
 
     /** No public API reports hotspot state; an active hotspot shows up as an extra interface (e.g. ap0, swlan0). */
     private fun logInterfaces() {
-        val up = NetworkInterface.getNetworkInterfaces().toList()
+        val interfaces = NetworkInterface.getNetworkInterfaces()
+        if (interfaces == null) {
+            SpikeLog.log(this, "FAIL interfaces: getNetworkInterfaces returned null")
+            return
+        }
+        val up = interfaces.toList()
             .filter { it.isUp && !it.isLoopback }
             .joinToString { iface ->
                 val v4 = iface.inetAddresses.toList().filterIsInstance<Inet4Address>().joinToString("/") { it.hostAddress.orEmpty() }
@@ -249,9 +254,13 @@ class MainActivity : Activity() {
 
     private fun releaseDeviceOwner() {
         dpmCall("release device owner") {
-            dpm.clearUserRestriction(admin, UserManager.DISALLOW_CONFIG_TETHERING)
-            @Suppress("DEPRECATION")
-            dpm.clearDeviceOwnerApp(packageName)
+            if (dpm.isDeviceOwnerApp(packageName)) {
+                dpm.clearUserRestriction(admin, UserManager.DISALLOW_CONFIG_TETHERING)
+                @Suppress("DEPRECATION")
+                dpm.clearDeviceOwnerApp(packageName)
+            }
+            // Also covers a failed set-device-owner, which leaves the app as a plain (uninstall-blocking) admin.
+            if (dpm.isAdminActive(admin)) dpm.removeActiveAdmin(admin)
         }
         showStatus()
     }
@@ -297,7 +306,14 @@ class MainActivity : Activity() {
         addView(Button(context).apply {
             text = label
             isAllCaps = false
-            setOnClickListener { onClick() }
+            // A failing check is a result to record, not a reason to crash the test screen.
+            setOnClickListener {
+                try {
+                    onClick()
+                } catch (e: Exception) {
+                    SpikeLog.log(context, "FAIL $label: $e")
+                }
+            }
         })
     }
 

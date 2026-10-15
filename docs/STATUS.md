@@ -5,8 +5,9 @@ Read this, `CLAUDE.md`, and `docs/ARCHITECTURE.md` before starting work. Update 
 _Last updated: 2026-10-15_
 
 ## Current phase
-**Phase 1 — Device spike.** Plan approved 2026-10-15. Spike app is written and builds; **device testing not started**
-(scheduled for 2026-10-16 on a non-RugKing test phone). Procedure and results table: `docs/spike-report.md`.
+**Phase 1 — Device spike.** Plan approved 2026-10-15. Spike app passes all checks possible on an Android 15
+emulator (device owner, all-app usage stats, network logging, app suspend/hide, lock, reboot). **Hardware testing next**
+(non-RugKing test phone at work, then a RugKing). Procedure, QR steps and results: `docs/spike-report.md`.
 
 ## Decisions made
 | Topic | Decision |
@@ -27,8 +28,8 @@ _Last updated: 2026-10-15_
 
 ## Phase 1 progress
 1. ✅ Kotlin project in `agent-app/`: `AdminReceiver`, Android 12+ provisioning activities (`ProvisioningModeActivity`, `PolicyComplianceActivity`), test screen `MainActivity`, `SoakWorker`, `SpikeLog` (writes `files/spike.log`)
-2. ⏳ Device owner via `adb shell dpm set-device-owner com.noahport.mdm.agent/.AdminReceiver`
-3. ⏳ Run the checks (hotspot, usage/tethering stats, network logging, lock, reboot, app suspend/hide)
+2. ✅ on emulator / ⏳ on hardware: device owner via `agent-app/scripts/install-device-owner.sh`
+3. ✅ on emulator / ⏳ on hardware: the checks. Hotspot turn-off and tethering usage need a real phone
 4. ⏳ QR provisioning (`agent-app/scripts/provisioning-payload.sh` builds the JSON; tested against the debug APK)
 5. ⏳ 24 h soak. **Must be repeated on a real RugKing**: the test phone can't show Ulefone battery behaviour
 6. ⏳ Fill in `docs/spike-report.md`
@@ -37,6 +38,15 @@ API facts confirmed from the SDK 36.1 sources (`Sdk/sources/android-36.1`):
 - `DISALLOW_CONFIG_TETHERING` set by a device owner applies globally; Android 9+ turns off active tethering when it is set.
 - `NetworkStatsManager`: device owner apps get usage for all users/UIDs, including tethering, without `PACKAGE_USAGE_STATS`; `querySummary(type, null, …)` covers all networks of that type.
 - Network logging needs every user/profile affiliated (fine on a fully managed phone with one user).
+
+## Admin interface (answering "which device holds it")
+The admin UI is **not on any phone**. It is the Filament web app (Phase 2/5) on the Contabo VPS, opened in a browser on
+any PC. Phones only run the agent. Until Phase 2 exists, the spike app's own test screen is the only interface.
+
+## Emulators
+- `Pixel_9` (user's, Android 15): left as found (spike app removed).
+- `Noahport_Spike` (Android 15, Google Play image): disposable, created for agent testing. Start with
+  `emulator -avd Noahport_Spike`; wipe with `-wipe-data` if `set-device-owner` complains about accounts.
 
 ## Waiting on the user
 - [ ] Run the spike on the test phone (2026-10-16); then a RugKing for provisioning, hotspot and the soak
@@ -53,4 +63,4 @@ API facts confirmed from the SDK 36.1 sources (`Sdk/sources/android-36.1`):
 
 ## Session log
 - 2026-10-14: Wrote the docs. Found the AMAPI permissible-usage restriction and switched the design to our own DPC. Hosting, alerts, and hotspot decisions made. Proposed the Phase 1 plan.
-- 2026-10-15: Phase 1 approved. Fleet is Android 13–15; package `com.noahport.mdm.agent`. Built the spike app, QR payload script and spike-report template; `assembleDebug` + `lintDebug` pass. Device testing is next.
+- 2026-10-15: Phase 1 approved. Fleet is Android 13–15; package `com.noahport.mdm.agent`. Built the spike app, QR payload script and spike-report template; `assembleDebug` + `lintDebug` pass. Device testing is next. Ran it on an Android 15 emulator: all emulator-testable checks pass; fixed a crash (missing `INTERNET` permission); added `install-device-owner.sh` and step-by-step QR test instructions.

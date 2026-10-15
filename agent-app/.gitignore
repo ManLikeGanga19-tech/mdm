@@ -4,3 +4,7 @@ local.properties
 .idea/
 *.iml
 .kotlin/
+
+# QR provisioning outputs (may contain Wi-Fi passwords / enrollment tokens)
+provisioning*.json
+qr*.png

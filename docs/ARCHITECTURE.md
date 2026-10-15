@@ -41,8 +41,11 @@ the admin-extras bundle → backend returns a per-device credential.
 
 **USB enrollment (current path, 2026-10-15):** Play Protect blocks non-allowlisted DPCs during QR provisioning, so until
 the agent is allowlisted, phones are enrolled from a company laptop over USB: install the release APK, `dpm
-set-device-owner`, then hand the agent its enrollment token over adb (exact mechanism to be designed, e.g. an
-`am start` extra to a protected activity). The flow then continues at `POST /api/device/v1/enroll` exactly as above.
+set-device-owner`, then hand the agent its enrollment token and label (asset tag, assigned-to) with `am broadcast` to
+`EnrollmentTokenReceiver`, which is protected by `android.permission.DUMP` (held by adb shell, not by third-party apps).
+Tool: `enroll/enroll.ps1` (Windows PowerShell 5.1, no admin), shipped as a zip kit built by
+`agent-app/scripts/make-enroll-kit.sh` and shared via OneDrive until the backend can serve it. The flow then continues
+at `POST /api/device/v1/enroll` exactly as above.
 
 **Control:** Admin changes policy or issues a command → backend stores it → `PushService` sends an FCM data message →
 agent calls `POST /api/device/v1/checkin` → receives current policy version and pending commands → applies them →

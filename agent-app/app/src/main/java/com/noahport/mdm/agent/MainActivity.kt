@@ -156,6 +156,13 @@ class MainActivity : Activity() {
                     "networkLogging=${dpm.isNetworkLoggingEnabled(admin)}",
             )
         }
+        val enrollment = EnrollmentTokenReceiver.prefs(this)
+        SpikeLog.log(
+            this,
+            "INFO enrollmentToken=${if (enrollment.contains(EnrollmentTokenReceiver.EXTRA_TOKEN)) "present" else "none"} " +
+                "assetTag=${enrollment.getString(EnrollmentTokenReceiver.EXTRA_ASSET_TAG, "")} " +
+                "assignedTo=${enrollment.getString(EnrollmentTokenReceiver.EXTRA_ASSIGNED_TO, "")}",
+        )
     }
 
     private fun setHotspotBlocked(blocked: Boolean) {

@@ -47,6 +47,14 @@
             </intent-filter>
         </activity>
 
+        <!-- USB enrollment: the laptop script hands over the enrollment token. DUMP is held by adb shell, not by
+             third-party apps (protectionLevel signature|privileged|development). -->
+        <receiver
+            android:name=".EnrollmentTokenReceiver"
+            android:exported="true"
+            android:permission="android.permission.DUMP"
+            tools:ignore="ProtectedPermissions" />
+
         <receiver
             android:name=".AdminReceiver"
             android:exported="true"

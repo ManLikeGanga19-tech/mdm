@@ -93,8 +93,8 @@ Take a photo of any error screen: those screens can't be screenshotted.
 | 1 | Device owner via adb | PASS | **PASS** | pending | Fails with "already some accounts" on a previously used emulator; fresh one fine |
 | 2 | Hotspot block (turns off active hotspot) | PASS (restriction set) | **PASS** | pending | Emulator has no real hotspot; turn-off must be checked on hardware |
 | 3 | Hotspot unblock | PASS | **PASS** | pending | |
-| 4 | All-UID usage without usage access | **PASS** | PASS (Wi-Fi) | pending | 15 UIDs on mobile and on Wi-Fi with no usage-access grant |
-| 5 | `UID_TETHERING` usage | n/a | not tested | pending | Needs a real hotspot |
+| 4 | All-UID usage without usage access | **PASS** | **PASS** (Wi-Fi + mobile) | pending | 15 UIDs on mobile and on Wi-Fi with no usage-access grant |
+| 5 | `UID_TETHERING` usage | n/a | **PASS** | pending | Needs a real hotspot |
 | 6 | Network logging batches | **PASS** | **PASS** | pending | 26 events (8 DNS, 18 connect) with package names, via `force-network-logs` |
 | 7 | Lock | PASS | **PASS** | pending | |
 | 8 | Reboot | PASS | **PASS** | pending | Still device owner after reboot |
@@ -104,7 +104,7 @@ Take a photo of any error screen: those screens can't be screenshotted.
 
 Other observations:
 - As device owner the app's standby bucket is `5` (EXEMPTED), even though it isn't on the battery-optimization allowlist. That's a good sign for background jobs; the RugKing soak still has to confirm it.
-- Test phone (Neon Smarta 2 K): Wi-Fi usage 19 UIDs / 48 MB; network logging 64 events (21 DNS, 43 connect) with package and host names; suspended Chrome opens the "Blocked by your IT admin" dialog; device owner and network logging survive reboot. Mobile and tethering usage untested: the SIM never got a data connection (no default network with Wi-Fi off).
+- Test phone (Neon Smarta 2 K): Wi-Fi usage 19 UIDs / 48 MB; network logging 64 events (21 DNS, 43 connect) with package and host names; suspended Chrome opens the "Blocked by your IT admin" dialog; device owner and network logging survive reboot. Mobile/tethering first untested (SIM had no bundle: Safaricom captive portal); re-tested after a bundle with USB tethering to the dev PC: a 52.4 MB download moved the mobile `tethering` figure from 2.4 MB to 60.3 MB (the rest is VPN overhead and other PC traffic), mobile total 108 to 167 MB.
 - Test phone: logcat at 15:25 UTC showed `Cannot suspend package "com.noahport.mdm.agent": has an active device admin`. Something on the phone (OEM app manager?) tried to suspend the agent; device admin status blocked it.
 - **QR provisioning is blocked by Google Play Protect.** Since ~Sept 2026, Play Protect only lets DPCs on Android Enterprise's allowlist install during provisioning; others get "App blocked to protect your device" with only an OK button ([Google: DPC allowlisting](https://support.google.com/work/android/answer/16694822)). It reportedly also blocks Google's own Test DPC. Getting on the list: Android verification plus a Play Protect appeal, with no published review time. `adb shell dpm set-device-owner` still works.
 - Bug found and fixed on the emulator: without the `INTERNET` permission, `NetworkInterface.getNetworkInterfaces()` returns null and crashed the app.

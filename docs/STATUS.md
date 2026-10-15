@@ -32,7 +32,7 @@ hotspot block **pass on a real phone** (Safaricom Neon Smarta 2 K, Android 14). 
 ## Phase 1 progress
 1. ✅ Kotlin project in `agent-app/`: `AdminReceiver`, Android 12+ provisioning activities (`ProvisioningModeActivity`, `PolicyComplianceActivity`), test screen `MainActivity`, `SoakWorker`, `SpikeLog` (writes `files/spike.log`)
 2. ✅ on emulator / ✅ on test phone: device owner via `agent-app/scripts/install-device-owner.sh`
-3. ✅ on emulator / ✅ on test phone: the checks, including hotspot turn-off. ⏳ Mobile and tethering usage: the test phone's SIM had no data connection
+3. ✅ on emulator / ✅ on test phone: the checks, including hotspot turn-off. mobile and tethering usage (USB tethering, 52 MB download counted)
 4. ❌ QR provisioning: payload, download and checksum worked, but Play Protect blocks the DPC ("App blocked to protect your device"). Needs allowlisting
 5. ⏳ 24 h soak. **Must be repeated on a real RugKing**: the test phone can't show Ulefone battery behaviour
 6. ⏳ Fill in `docs/spike-report.md`
@@ -52,7 +52,6 @@ any PC. Phones only run the agent. Until Phase 2 exists, the spike app's own tes
   `emulator -avd Noahport_Spike`; wipe with `-wipe-data` if `set-device-owner` complains about accounts.
 
 ## Waiting on the user
-- [ ] Test phone: get working Safaricom data, then re-enroll by USB and do the tethering-usage check
 - [ ] Run the spike on a RugKing (USB enrollment, hotspot, 24 h soak)
 - [ ] Back up `C:\Users\ADMIN\.noahport-signing\` offline (USB drive + password manager). Losing it means re-enrolling every phone
 - [ ] Check whether Noahport has a D-U-N-S number (needed for the Android Developer Console / allowlist appeal)
@@ -72,4 +71,4 @@ any PC. Phones only run the agent. Until Phase 2 exists, the spike app's own tes
 ## Session log
 - 2026-10-14: Wrote the docs. Found the AMAPI permissible-usage restriction and switched the design to our own DPC. Hosting, alerts, and hotspot decisions made. Proposed the Phase 1 plan.
 - 2026-10-15: Phase 1 approved. Fleet is Android 13–15; package `com.noahport.mdm.agent`. Built the spike app, QR payload script and spike-report template; `assembleDebug` + `lintDebug` pass. Device testing is next. Ran it on an Android 15 emulator: all emulator-testable checks pass; fixed a crash (missing `INTERNET` permission); added `install-device-owner.sh` and step-by-step QR test instructions. Added Share log button, a verified QR generator (`agent-app/scripts/qr`; `npx qrcode` mangles JSON on Windows) and a work kit in `OneDrive/Desktop/noahport-work-kit` (APK + QR) for testing from the company laptop.
-- 2026-10-15 (evening, at home): Published the `spike-apk` pre-release (verified the hash matches the build). Test 1 (USB) on a Safaricom Neon Smarta 2 K, Android 14: device owner, hotspot block/unblock (turns off a live hotspot), Wi-Fi usage, network logging, lock, suspend/hide, reboot all pass. Mobile/tethering usage not tested (SIM had no data). Test 2 (QR): blocked by Play Protect's DPC allowlist. Chose option C: USB enrollment now, allowlist appeal in parallel. Next: one-click USB enrollment script, then the release key and appeal once the key is approved. Created the permanent release key (user approved) and wired it into `assembleRelease`. Proposed the USB enrollment tool plan.
+- 2026-10-15 (evening, at home): Published the `spike-apk` pre-release (verified the hash matches the build). Test 1 (USB) on a Safaricom Neon Smarta 2 K, Android 14: device owner, hotspot block/unblock (turns off a live hotspot), Wi-Fi usage, network logging, lock, suspend/hide, reboot all pass. Mobile/tethering usage not tested (SIM had no data). Test 2 (QR): blocked by Play Protect's DPC allowlist. Chose option C: USB enrollment now, allowlist appeal in parallel. Next: one-click USB enrollment script, then the release key and appeal once the key is approved. Created the permanent release key (user approved) and wired it into `assembleRelease`. Proposed the USB enrollment tool plan. Tethering usage check passed on the test phone (bundle bought, USB tethering to the dev PC).

@@ -48,10 +48,7 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         dpm = getSystemService(DevicePolicyManager::class.java)
-        if (Agent.isEnrolled(this)) {
-            Agent.schedulePeriodicCheckin(this) // KEEP: no-op when already scheduled
-            Agent.checkInNow(this) // opening the app syncs straight away (useful on site, and until push wake-ups exist)
-        }
+        if (Agent.isEnrolled(this)) Agent.schedulePeriodicCheckin(this) // KEEP: no-op when already scheduled
         if (!isTestBuild) {
             setContentView(withSystemBarPadding(ScrollView(this).apply { addView(NoticeView(context)) }))
             return
@@ -64,6 +61,8 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        // Bringing the app to the front syncs straight away (useful on site, and until push wake-ups exist).
+        if (Agent.isEnrolled(this)) Agent.checkInNow(this)
         if (!isTestBuild) return
         SpikeLog.listener = { line ->
             runOnUiThread {

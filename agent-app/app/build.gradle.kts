@@ -22,8 +22,8 @@ android {
         applicationId = "com.noahport.mdm.agent"
         minSdk = 33 // Fleet runs Android 13-15
         targetSdk = 36
-        versionCode = 5
-        versionName = "0.3.1"
+        versionCode = 6
+        versionName = "0.3.2"
     }
 
     signingConfigs {

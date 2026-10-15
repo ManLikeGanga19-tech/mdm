@@ -48,7 +48,10 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         dpm = getSystemService(DevicePolicyManager::class.java)
-        if (Agent.isEnrolled(this)) Agent.schedulePeriodicCheckin(this) // KEEP: no-op when already scheduled
+        if (Agent.isEnrolled(this)) {
+            Agent.schedulePeriodicCheckin(this) // KEEP: no-op when already scheduled
+            Agent.checkInNow(this) // opening the app syncs straight away (useful on site, and until push wake-ups exist)
+        }
         if (!isTestBuild) {
             setContentView(withSystemBarPadding(ScrollView(this).apply { addView(NoticeView(context)) }))
             return

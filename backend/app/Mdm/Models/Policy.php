@@ -2,6 +2,7 @@
 
 namespace App\Mdm\Models;
 
+use App\Mdm\Services\PushService;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -33,6 +34,10 @@ class Policy extends Model
         });
         static::updated(function (Policy $policy) {
             if ($policy->wasChanged('payload')) {
+                // Every phone in the affected groups should fetch the new rules now, not at its next check-in.
+                app(PushService::class)->wakeMany(
+                    Device::query()->whereIn('group_id', $policy->groups()->pluck('id'))->whereNotNull('fcm_token')->get()
+                );
                 AuditLog::record('policy.updated', $policy, [
                     'groups' => $policy->groups()->pluck('name')->join(', '),
                     'from' => $policy->getOriginal('payload'),

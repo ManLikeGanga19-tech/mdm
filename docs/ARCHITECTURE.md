@@ -6,6 +6,11 @@
 - Monitor: device status, installed apps, per-app data usage, hotspot (tethering) usage, network activity (DNS/connect logs).
 - Remote actions: lock, reboot, reset password, wipe.
 - Admin dashboard with reports and email alerts (for example "device used > X GB hotspot this week").
+- Every device is identified, monitored and controlled **individually**: a fleet list with search/filters, and a
+  per-device page showing only that device's status, usage, network logs, commands and history. Policies and commands
+  target one device or a group, never the whole fleet implicitly.
+- Enrollment must work from **any company laptop** (Windows, no admin rights, no Android Studio): only Platform-Tools
+  plus files downloaded from our server. Nothing may depend on the dev PC.
 
 Non-goals: reading message content, personal-app spying, managing personal (BYOD) phones.
 
@@ -33,6 +38,11 @@ approval or quota is involved. Google is used only for Firebase Cloud Messaging 
 factory reset, tapped 6× on the welcome screen, scans QR → Android downloads the agent APK from our server, verifies
 its signing-certificate checksum, makes it device owner → agent calls `POST /api/device/v1/enroll` with the token from
 the admin-extras bundle → backend returns a per-device credential.
+
+**USB enrollment (current path, 2026-10-15):** Play Protect blocks non-allowlisted DPCs during QR provisioning, so until
+the agent is allowlisted, phones are enrolled from a company laptop over USB: install the release APK, `dpm
+set-device-owner`, then hand the agent its enrollment token over adb (exact mechanism to be designed, e.g. an
+`am start` extra to a protected activity). The flow then continues at `POST /api/device/v1/enroll` exactly as above.
 
 **Control:** Admin changes policy or issues a command → backend stores it → `PushService` sends an FCM data message →
 agent calls `POST /api/device/v1/checkin` → receives current policy version and pending commands → applies them →

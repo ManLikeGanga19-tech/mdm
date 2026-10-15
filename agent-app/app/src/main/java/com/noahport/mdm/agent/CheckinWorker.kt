@@ -72,6 +72,7 @@ class CheckinWorker(context: Context, params: WorkerParameters) : Worker(context
             .put("agent_version_code", info.versionCode)
             .put("agent_version_name", info.versionName)
             .apply { if (appliedVersion >= 0) put("applied_policy_version", appliedVersion) }
+            .apply { PushReceiver.currentToken(ctx)?.let { put("fcm_token", it) } }
             .apply {
                 EnrollmentTokenReceiver.prefs(ctx).getString(NoticeView.KEY_ACKNOWLEDGED_AT, null)
                     ?.let { put("notice_acknowledged_at", it) }

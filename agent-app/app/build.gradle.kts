@@ -4,6 +4,12 @@ plugins {
     id("com.android.application")
 }
 
+// Firebase push wake-ups: app/google-services.json comes from the Firebase console (project noahport-mdm). Without
+// it the agent still builds and works, falling back to the 15-minute check-in.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 // Release signing key lives outside the repo (CLAUDE.md rule 3). Override the path with
 // -Pnoahport.signing=<file> or NOAHPORT_SIGNING; without the file, release builds are unsigned.
 val signingFile = file(
@@ -51,4 +57,6 @@ android {
 
 dependencies {
     implementation("androidx.work:work-runtime-ktx:2.11.2")
+    implementation(platform("com.google.firebase:firebase-bom:35.0.2"))
+    implementation("com.google.firebase:firebase-messaging")
 }

@@ -7,6 +7,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.OutOfQuotaPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import java.util.concurrent.TimeUnit
@@ -42,16 +43,17 @@ object Agent {
         )
     }
 
-    /** One check-in as soon as possible (after enrolling, after applying new rules, from the debug screen). */
-    fun checkInNow(context: Context) {
-        WorkManager.getInstance(context).enqueueUniqueWork(
-            WORK_CHECKIN_NOW,
-            ExistingWorkPolicy.REPLACE,
-            OneTimeWorkRequestBuilder<CheckinWorker>()
-                .setConstraints(online)
-                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
-                .build(),
-        )
+    /**
+     * One check-in as soon as possible (after enrolling or applying new rules, when the app is opened, on a push).
+     * [expedited] asks Android to run it immediately; used for push wake-ups, which grant that allowance.
+     */
+    fun checkInNow(context: Context, expedited: Boolean = false) {
+        val request = OneTimeWorkRequestBuilder<CheckinWorker>()
+            .setConstraints(online)
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
+            .apply { if (expedited) setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST) }
+            .build()
+        WorkManager.getInstance(context).enqueueUniqueWork(WORK_CHECKIN_NOW, ExistingWorkPolicy.REPLACE, request)
     }
 
     /** The regular ~15-minute check-in (WorkManager's minimum). Survives reboots. */

@@ -55,6 +55,15 @@
             android:permission="android.permission.DUMP"
             tools:ignore="ProtectedPermissions" />
 
+        <!-- Firebase "check in now" wake-ups from the server (PushService). -->
+        <service
+            android:name=".PushReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
         <receiver
             android:name=".AdminReceiver"
             android:exported="true"

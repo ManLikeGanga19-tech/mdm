@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Devices\Pages;
 use App\Filament\Resources\Devices\DeviceResource;
 use App\Filament\Resources\Devices\Widgets\DeviceBatteryChart;
 use App\Filament\Resources\Devices\Widgets\DeviceLiveStatus;
+use App\Filament\Resources\Devices\Widgets\DeviceLiveView;
 use App\Filament\Resources\Devices\Widgets\DeviceTopApps;
 use App\Filament\Resources\Devices\Widgets\DeviceTopSites;
 use App\Filament\Resources\Devices\Widgets\DeviceUsageChart;
@@ -12,6 +13,7 @@ use App\Mdm\Models\Command;
 use App\Mdm\Models\Device;
 use App\Mdm\Services\CommandService;
 use App\Mdm\Services\HandoverEnforcement;
+use App\Mdm\Services\LiveView;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
@@ -59,6 +61,21 @@ class ViewDevice extends ViewRecord
                     app(HandoverEnforcement::class)->release($record);
                     Notification::make()->title("Handover lock released on {$record->asset_tag}")->success()->send();
                 }),
+            Action::make('liveView')
+                ->label('Live view')
+                ->icon(Heroicon::OutlinedSignal)
+                ->color('success')
+                ->visible(fn (Device $record) => auth()->user()->isSuperAdmin() && ! app(LiveView::class)->isActive($record))
+                ->action(function (Device $record) {
+                    app(LiveView::class)->start($record);
+                    Notification::make()->title('Live view started')->body('The phone starts sending within a few seconds and shows a notice while you watch.')->success()->send();
+                }),
+            Action::make('stopLiveView')
+                ->label('Stop live view')
+                ->icon(Heroicon::OutlinedStop)
+                ->color('gray')
+                ->visible(fn (Device $record) => auth()->user()->isSuperAdmin() && app(LiveView::class)->isActive($record))
+                ->action(fn (Device $record) => app(LiveView::class)->stop($record)),
             $this->commandAction('lock', Heroicon::OutlinedLockClosed, confirm: false),
             ActionGroup::make([
                 $this->commandAction('reboot', Heroicon::OutlinedArrowPath, confirm: true),
@@ -71,7 +88,7 @@ class ViewDevice extends ViewRecord
 
     protected function getHeaderWidgets(): array
     {
-        return [DeviceLiveStatus::class];
+        return [DeviceLiveStatus::class, DeviceLiveView::class];
     }
 
     /** Data use, apps, websites and battery (Milestone B), below the tabs. */

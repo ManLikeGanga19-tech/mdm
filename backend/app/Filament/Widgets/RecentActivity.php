@@ -40,6 +40,9 @@ class RecentActivity extends TableWidget
         'enrollment_code.disabled' => 'Enrollment code disabled',
         'settings.peak_hours' => 'Peak hours changed',
         'handover_lock.released' => 'Handover lock released',
+        'live_view.started' => 'Live view started',
+        'live_view.stopped' => 'Live view stopped',
+        'command.live_view' => 'Live view sent',
     ];
 
     public static function canView(): bool

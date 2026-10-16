@@ -19,6 +19,7 @@ class Command extends Model
         'reboot' => 'Restart',
         'reset_password' => 'Reset screen lock',
         'wipe' => 'Erase phone',
+        'live_view' => 'Live view',
     ];
 
     protected $table = 'mdm_commands';

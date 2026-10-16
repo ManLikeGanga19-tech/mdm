@@ -90,6 +90,15 @@ class LiveViewTest extends TestCase
             ->assertSeeInOrder(['Live view started', 'Chrome', 'Network changed', 'Command sent: Lock now']);
     }
 
+    public function test_the_phone_page_shows_the_live_console(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => Role::SuperAdmin]));
+
+        // Widgets load lazily (after the page), so the page holds the component, which then renders the terminal.
+        $this->get("/admin/devices/{$this->device->id}")->assertOk()->assertSeeLivewire(DeviceLiveConsole::class);
+        Livewire::test(DeviceLiveConsole::class, ['record' => $this->device])->assertSee('Live console')->assertSee('waiting for live view');
+    }
+
     public function test_events_alone_are_accepted_and_nothing_is_kept_without_a_session(): void
     {
         $this->withToken($this->token)->postJson('/api/device/v1/live', [

@@ -21,6 +21,31 @@ If Windows shows "Windows protected your PC": click "More info" > "Run anyway".
 (The tool is not yet code-signed, so Windows doesn't recognise it.)
 
 
+GET AN ENROLLMENT CODE (IT ADMIN, ONCE PER SESSION)
+---------------------------------------------------
+1. On the admin site: Enrollment codes > New. Pick the group the phones go
+   into (e.g. "Shift phones"), how many phones, and an expiry date.
+2. Copy the code (starts with NPE-). It is shown ONLY ONCE.
+3. The tool asks for it when it starts and checks it with the server.
+   One code covers the whole session; each phone uses up one of its uses.
+
+Shift phones lock themselves if no handover is recorded after a shift change
+(group setting "Handover lock"). Right after enrolling, record a handover for
+each phone (admin site > Shift handover), or turn the lock off for the group
+until the pilot starts.
+
+
+DOING THIS OVER ANYDESK
+-----------------------
+The phones plug into the laptop that RUNS the tool (the company laptop), not
+into the PC of the person helping over AnyDesk. AnyDesk only shares the screen.
+- Person at the laptop: unplugs/plugs phones, does the phone steps below, and
+  taps "Allow" on "Allow USB debugging?" on each phone.
+- Person on AnyDesk: runs the exe, types the enrollment code, asset tags and
+  names in the black window, and checks each phone appears on the admin site.
+No admin rights are needed, so AnyDesk's "request elevation" is not needed.
+
+
 PREPARE EACH PHONE
 ------------------
 1. Factory reset: Settings > System > Reset options > Erase all data (factory reset).
@@ -33,6 +58,7 @@ PREPARE EACH PHONE
 ENROLL
 ------
 1. Double-click NoahportEnroll-<version>.exe. A black window opens.
+   Paste the enrollment code and press Enter; wait for "Code accepted".
 2. Plug in the phone with a DATA cable. On the phone tap "Allow" on
    "Allow USB debugging?" (tick "Always allow").
 3. Type the phone's asset tag (e.g. NP-0042) and press Enter.

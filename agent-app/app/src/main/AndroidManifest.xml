@@ -31,6 +31,17 @@
             </intent-filter>
         </activity>
 
+        <!-- Handover lock notice; pinned with lock task mode while the phone is not handed over. -->
+        <activity
+            android:name=".HandoverLockActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:lockTaskMode="if_whitelisted"
+            android:showWhenLocked="true"
+            android:taskAffinity=".handoverlock"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen" />
+
         <!-- Android 12+ QR provisioning asks the DPC which mode to use. -->
         <activity
             android:name=".ProvisioningModeActivity"

@@ -34,6 +34,8 @@ class PolicyEnforcer(private val context: Context) {
             .onFailure { errors += "apps: $it" }
         runCatching { dpm.setNetworkLoggingEnabled(admin, policy.optBoolean("network_logging", true)) }
             .onFailure { errors += "network logging: $it" }
+        runCatching { HandoverLock.apply(context, policy.optBoolean("handover_lock", false)) }
+            .onFailure { errors += "handover lock: $it" }
 
         if (errors.isNotEmpty()) {
             SpikeLog.log(context, "FAIL policy v$version: ${errors.joinToString("; ")}")

@@ -9,6 +9,7 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED || intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
             AgentService.ensureRunning(context)
+            HandoverLock.show(context) // a restart doesn't get around the handover lock
             if (Agent.isEnrolled(context)) Agent.checkInNow(context)
         }
     }

@@ -72,11 +72,21 @@ class RolesAndAccountsTest extends TestCase
         $this->assertFalse(AdminRoleResource::canDelete($manager), 'built-in roles stay');
     }
 
+    public function test_a_blocked_page_shows_the_not_allowed_page_with_the_role(): void
+    {
+        $this->actingAs($this->user(Role::Manager, ['name' => 'Mary Manager']));
+
+        $this->get('/admin/users')->assertForbidden()
+            ->assertSee("You don't have access to this")
+            ->assertSee('Mary Manager · Manager')
+            ->assertSee('Roles &amp; permissions', false);
+    }
+
     public function test_a_disabled_account_is_shut_out(): void
     {
         $user = $this->user(Role::Manager, ['disabled_at' => now()]);
 
-        $this->actingAs($user)->get('/admin')->assertForbidden();
+        $this->actingAs($user)->get('/admin')->assertForbidden()->assertSee('This account is disabled');
         $this->assertFalse($user->hasPermission(Permission::FleetView));
     }
 

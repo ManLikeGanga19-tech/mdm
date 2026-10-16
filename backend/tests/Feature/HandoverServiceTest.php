@@ -53,16 +53,21 @@ class HandoverServiceTest extends TestCase
         $this->assertTrue($b->fresh()->currentAssignment->clerk->is($clerk));
     }
 
-    public function test_handing_over_to_the_current_holder_changes_nothing(): void
+    public function test_a_double_tap_is_ignored_but_a_double_shift_is_recorded(): void
     {
         $phone = Device::create(['asset_tag' => 'NP-0001']);
         $clerk = Clerk::create(['staff_number' => '1001', 'name' => 'Clerk']);
 
-        $first = $this->handover->handOver($phone, $clerk);
-        $second = $this->handover->handOver($phone, $clerk);
-
-        $this->assertTrue($first->is($second));
+        $first = $this->handover->handOver($phone, $clerk, at: Carbon::parse('2026-10-16 03:40', 'UTC'));
+        $repeat = $this->handover->handOver($phone, $clerk, at: Carbon::parse('2026-10-16 03:42', 'UTC'));
+        $this->assertTrue($first->is($repeat));
         $this->assertDatabaseCount('mdm_device_assignments', 1);
+
+        // Same clerk confirmed for the next shift: a new handover, the previous one closed.
+        $nextShift = $this->handover->handOver($phone, $clerk, at: Carbon::parse('2026-10-16 11:40', 'UTC'));
+        $this->assertFalse($first->is($nextShift));
+        $this->assertEquals('2026-10-16 11:40:00', $first->fresh()->ended_at->utc()->toDateTimeString());
+        $this->assertDatabaseCount('mdm_device_assignments', 2);
     }
 
     public function test_return_leaves_the_phone_with_nobody(): void

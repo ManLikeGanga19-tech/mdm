@@ -15,6 +15,9 @@ use Illuminate\Support\Facades\DB;
  */
 class HandoverService
 {
+    /** A second handover to the same clerk within this many minutes is treated as a repeat (double tap). */
+    public const REPEAT_MINUTES = 10;
+
     /** Gives $device to $clerk now. Closes the phone's previous holder and the clerk's previous phone. */
     public function handOver(Device $device, Clerk $clerk, ?string $note = null, ?Carbon $at = null): DeviceAssignment
     {
@@ -28,8 +31,10 @@ class HandoverService
                 ->get();
 
             $current = $open->firstWhere('device_id', $device->id);
-            if ($current && $current->clerk_id === $clerk->id) {
-                return $current; // already holding it
+            // Handing the phone to the clerk who already holds it (a double shift) is still a handover the coordinator
+            // confirms for the new shift, so it is recorded. Only a repeat within minutes (a double tap) is ignored.
+            if ($current && $current->clerk_id === $clerk->id && $current->started_at->gt($at->copy()->subMinutes(self::REPEAT_MINUTES))) {
+                return $current;
             }
 
             foreach ($open as $assignment) {

@@ -11,6 +11,7 @@ use App\Filament\Resources\Devices\Widgets\DeviceUsageChart;
 use App\Mdm\Models\Command;
 use App\Mdm\Models\Device;
 use App\Mdm\Services\CommandService;
+use App\Mdm\Services\HandoverEnforcement;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
@@ -46,6 +47,17 @@ class ViewDevice extends ViewRecord
                 ->action(function (array $data, Device $record) {
                     app(CommandService::class)->overridePolicy($record, 'hotspot', $data['hotspot'] === 'group' ? null : $data['hotspot']);
                     Notification::make()->title('Hotspot rule saved. The phone applies it at its next check-in.')->success()->send();
+                }),
+            Action::make('releaseHandoverLock')
+                ->label('Release handover lock')
+                ->icon(Heroicon::OutlinedLockOpen)
+                ->color('warning')
+                ->visible(fn (Device $record) => auth()->user()->isSuperAdmin() && app(HandoverEnforcement::class)->isLocked($record))
+                ->requiresConfirmation()
+                ->modalDescription('The phone unlocks now and stays usable until the next handover window closes. Prefer recording the handover on the Shift handover page; this is recorded in the audit log.')
+                ->action(function (Device $record) {
+                    app(HandoverEnforcement::class)->release($record);
+                    Notification::make()->title("Handover lock released on {$record->asset_tag}")->success()->send();
                 }),
             $this->commandAction('lock', Heroicon::OutlinedLockClosed, confirm: false),
             ActionGroup::make([

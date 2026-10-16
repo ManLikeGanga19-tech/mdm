@@ -39,6 +39,7 @@ class RecentActivity extends TableWidget
         'enrollment_code.created' => 'Enrollment code made',
         'enrollment_code.disabled' => 'Enrollment code disabled',
         'settings.peak_hours' => 'Peak hours changed',
+        'handover_lock.released' => 'Handover lock released',
     ];
 
     public static function canView(): bool

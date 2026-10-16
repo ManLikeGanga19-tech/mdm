@@ -9,6 +9,7 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -65,6 +66,9 @@ class DeviceGroupResource extends Resource
                         ->options(['blocked' => 'Blocked', 'allowed' => 'Allowed, monitored'])
                         ->default('blocked')
                         ->required(),
+                    Toggle::make('payload.handover_lock')
+                        ->label('Lock phones not handed over')
+                        ->helperText('When a shift\'s handover window closes, phones without a recorded handover lock on a full-screen notice until a coordinator records it.'),
                     TagsInput::make('payload.blocked_apps')
                         ->label('Blocked apps')
                         ->placeholder('Add a package name, e.g. com.zhiliaoapp.musically')
@@ -82,6 +86,9 @@ class DeviceGroupResource extends Resource
                 TextColumn::make('policy.payload.hotspot')->label('Hotspot')->badge()
                     ->formatStateUsing(fn (?string $state) => $state === 'allowed' ? 'Allowed, monitored' : 'Blocked')
                     ->color(fn (?string $state) => $state === 'allowed' ? 'warning' : 'gray'),
+                TextColumn::make('policy.payload.handover_lock')->label('Handover lock')->badge()
+                    ->state(fn (DeviceGroup $record) => ($record->policy?->payload['handover_lock'] ?? false) ? 'On' : 'Off')
+                    ->color(fn (string $state) => $state === 'On' ? 'success' : 'gray'),
                 TextColumn::make('policy.payload.blocked_apps')->label('Blocked apps')->badge()->placeholder('None'),
                 TextColumn::make('devices_count')->counts('devices')->label('Phones'),
             ])

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Devices\Widgets;
 
 use App\Mdm\Models\Device;
+use App\Mdm\Services\HandoverEnforcement;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Database\Eloquent\Model;
@@ -45,9 +46,14 @@ class DeviceLiveStatus extends StatsOverviewWidget
                 ->description($online ? 'Reachable' : 'Not heard from recently')
                 ->descriptionIcon($online ? 'heroicon-m-check-circle' : 'heroicon-m-exclamation-triangle')
                 ->color($online ? 'success' : 'warning'),
-            Stat::make('Held by', $device->currentAssignment?->clerk?->name ?? 'Nobody')
-                ->description($device->currentAssignment ? 'Since '.$device->currentAssignment->started_at->diffForHumans() : 'From the shift handover')
-                ->descriptionIcon('heroicon-m-user'),
+            app(HandoverEnforcement::class)->isLocked($device)
+                ? Stat::make('Held by', 'Locked')
+                    ->description('Not handed over: waiting for the coordinator')
+                    ->descriptionIcon('heroicon-m-lock-closed')
+                    ->color('danger')
+                : Stat::make('Held by', $device->currentAssignment?->clerk?->name ?? 'Nobody')
+                    ->description($device->currentAssignment ? 'Since '.$device->currentAssignment->started_at->diffForHumans() : 'From the shift handover')
+                    ->descriptionIcon('heroicon-m-user'),
         ];
     }
 }

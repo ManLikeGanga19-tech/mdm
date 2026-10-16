@@ -50,6 +50,8 @@ class HandoverService
                 'to' => $clerk->label(),
                 'note' => $note,
             ]);
+            // A handover can lift the handover lock: let the phone know now (after the transaction commits).
+            DB::afterCommit(fn () => app(PushService::class)->wake($device));
 
             return $assignment;
         });

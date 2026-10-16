@@ -29,6 +29,9 @@ class FleetHealth
         }
 
         $issues = [];
+        if (app(HandoverEnforcement::class)->isLocked($device)) {
+            $issues[] = 'Locked: not handed over';
+        }
         if (! $device->last_checkin_at) {
             $issues[] = 'Never checked in';
         } elseif ($device->last_checkin_at->lt(now()->subMinutes(self::SILENT_AFTER_MINUTES))) {

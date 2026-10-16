@@ -12,6 +12,7 @@
         \n• Phone details: model, Android version, security updates
         \n• Which apps are installed
         \n• How much mobile data and Wi-Fi each app uses, including data shared through the hotspot
+        \n• Battery level and whether the phone is charging
         \n• Which websites and online services the phone connects to (their names and addresses, not what you read, type or send)
         \n\n<b>What Noahport cannot see</b>
         \n• Your messages, calls, contacts, photos, videos or files
@@ -21,10 +22,13 @@
         \n• Allow or block the hotspot and certain apps
         \n• Set screen-lock rules
         \n• Lock or restart the phone, reset its screen lock, or erase it if it is lost or stolen
+        \n• Lock the phone if it was not handed over at the shift change
+        \n• Watch the phone\'s connection speed live for a few minutes (a notice shows while this happens)
         \n\nNetwork activity records are kept for 90 days. Only Noahport IT administrators can see this information. It is used to manage company phones, control data costs and keep them secure, as described in Noahport\'s device-use policy.
         \n\nQuestions? Contact Noahport IT.</string>
     <string name="service_channel">Phone management</string>
     <string name="service_text">Tap to see what Noahport can and cannot see</string>
+    <string name="service_text_live">Noahport IT is viewing this phone\'s network activity (live view)</string>
     <string name="handover_lock_title">Phone locked</string>
     <string name="handover_lock_message">The device was not handed over from the previous shift. Consult your coordinator for device handover.</string>
     <string name="handover_lock_footer">%1$s · Unlocks automatically once the handover is recorded. Hold the power button for emergency calls.</string>

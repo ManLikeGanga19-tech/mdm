@@ -36,6 +36,8 @@ class AgentService : Service() {
 
     private val reportSoon = Runnable { Agent.checkInNow(this, expedited = true) }
 
+    private val live by lazy { LiveSampler(this) { handler.post { updateNotification(live = false) } } }
+
     private val power = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
@@ -88,12 +90,19 @@ class AgentService : Service() {
         getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(network)
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_LIVE) {
+            live.start(intent.getIntExtra(EXTRA_SECONDS, 600).coerceIn(10, 1800))
+            updateNotification(live = true)
+        }
+        return START_STICKY
+    }
 
     override fun onDestroy() {
         runCatching { unregisterReceiver(power) }
         runCatching { getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(network) }
         handler.removeCallbacks(reportSoon)
+        live.shutdown()
         super.onDestroy()
     }
 
@@ -106,7 +115,12 @@ class AgentService : Service() {
         handler.postDelayed(reportSoon, 1500)
     }
 
-    private fun notification(): Notification {
+    /** While live view runs the notice says so (transparency; Kenya Data Protection Act). */
+    private fun updateNotification(live: Boolean) {
+        getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification(live))
+    }
+
+    private fun notification(live: Boolean = false): Notification {
         val manager = getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(
             NotificationChannel(CHANNEL, getString(R.string.service_channel), NotificationManager.IMPORTANCE_MIN),
@@ -117,7 +131,7 @@ class AgentService : Service() {
         return Notification.Builder(this, CHANNEL)
             .setSmallIcon(android.R.drawable.ic_lock_lock)
             .setContentTitle(getString(R.string.notice_title))
-            .setContentText(getString(R.string.service_text))
+            .setContentText(getString(if (live) R.string.service_text_live else R.string.service_text))
             .setContentIntent(open)
             .setOngoing(true)
             .build()
@@ -126,6 +140,13 @@ class AgentService : Service() {
     companion object {
         private const val CHANNEL = "agent"
         private const val NOTIFICATION_ID = 1
+        private const val ACTION_LIVE = "com.noahport.mdm.agent.LIVE"
+        private const val EXTRA_SECONDS = "seconds"
+
+        /** Starts (or extends) live view for [seconds]; the service shows that IT is watching. */
+        fun startLive(context: Context, seconds: Int) {
+            context.startForegroundService(Intent(context, AgentService::class.java).setAction(ACTION_LIVE).putExtra(EXTRA_SECONDS, seconds))
+        }
 
         /** Starts the service if it isn't running (called on enrollment, app open, boot and every check-in). */
         fun ensureRunning(context: Context) {

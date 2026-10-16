@@ -3,6 +3,7 @@ package com.noahport.mdm.agent
 import android.app.admin.DevicePolicyManager
 import android.content.Context
 import android.os.Build
+import org.json.JSONObject
 import java.security.SecureRandom
 
 /**
@@ -15,7 +16,7 @@ class CommandRunner(private val context: Context, private val report: (uuid: Str
     private val admin = AdminReceiver.component(context)
     private val done = context.getSharedPreferences("commands", Context.MODE_PRIVATE)
 
-    fun run(uuid: String, type: String) {
+    fun run(uuid: String, type: String, payload: JSONObject? = null) {
         if (done.contains(uuid)) { // already ran; the server just hasn't recorded the result yet
             report(uuid, done.getBoolean(uuid, false), null)
             return
@@ -27,6 +28,7 @@ class CommandRunner(private val context: Context, private val report: (uuid: Str
                 "reset_password" -> resetPassword()
                 "reboot" -> finishFirst(uuid) { dpm.reboot(admin) }
                 "wipe" -> finishFirst(uuid) { wipe() }
+                "live_view" -> AgentService.startLive(context, payload?.optInt("seconds", 600) ?: 600)
                 else -> error("unknown command type $type")
             }
         }

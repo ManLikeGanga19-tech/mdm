@@ -52,7 +52,7 @@ class CheckinWorker(context: Context, params: WorkerParameters) : Worker(context
         val commands = body.optJSONArray("commands")
         for (i in 0 until (commands?.length() ?: 0)) {
             val command = commands!!.getJSONObject(i)
-            runner.run(command.getString("uuid"), command.getString("type"))
+            runner.run(command.getString("uuid"), command.getString("type"), command.optJSONObject("payload"))
         }
 
         // Tell the server straight away that new rules are in force, instead of at the next 15-minute check-in.

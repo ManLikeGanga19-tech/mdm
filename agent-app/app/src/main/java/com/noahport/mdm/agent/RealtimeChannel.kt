@@ -111,6 +111,7 @@ object RealtimeChannel {
                 }
             } catch (e: IOException) {
                 // Network change, read timeout, server restart, or reconnect(): connect again below.
+                if (wasConnected) LiveFeed.add("Real-time channel dropped (${e.javaClass.simpleName}), reconnecting")
             } catch (e: Exception) {
                 SpikeLog.log(ctx, "FAIL real-time channel: $e")
             } finally {

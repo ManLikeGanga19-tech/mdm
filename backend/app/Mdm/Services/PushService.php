@@ -64,6 +64,7 @@ class PushService
         $id = (string) Str::uuid();
         $this->publish($device, $id);
         $this->sendFcm($device, $id);
+        app(LiveView::class)->event($device, 'Wake-up sent to the phone');
     }
 
     /**
@@ -91,10 +92,9 @@ class PushService
     {
         $sentAt = Cache::pull($this->wakeKey($device));
         if ($sentAt !== null) {
-            Cache::put('wake-latency:'.$device->id, [
-                'seconds' => round((now()->getTimestampMs() - $sentAt) / 1000, 1),
-                'at' => now()->toIso8601ZuluString(),
-            ], now()->addDays(7));
+            $seconds = round((now()->getTimestampMs() - $sentAt) / 1000, 1);
+            Cache::put('wake-latency:'.$device->id, ['seconds' => $seconds, 'at' => now()->toIso8601ZuluString()], now()->addDays(7));
+            app(LiveView::class)->event($device, "Phone checked in {$seconds} s after the wake-up");
         }
     }
 

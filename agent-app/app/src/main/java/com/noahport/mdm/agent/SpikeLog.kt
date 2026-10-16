@@ -19,6 +19,7 @@ object SpikeLog {
         Log.i(TAG, message)
         File(context.filesDir, FILE).appendText(line + "\n")
         listener?.invoke(line)
+        LiveFeed.add(message) // shown in the live console while live view runs
     }
 
     @Synchronized

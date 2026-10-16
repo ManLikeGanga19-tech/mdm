@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Devices\Pages;
 
 use App\Filament\Resources\Devices\DeviceResource;
 use App\Filament\Resources\Devices\Widgets\DeviceBatteryChart;
+use App\Filament\Resources\Devices\Widgets\DeviceLiveConsole;
 use App\Filament\Resources\Devices\Widgets\DeviceLiveStatus;
 use App\Filament\Resources\Devices\Widgets\DeviceLiveView;
 use App\Filament\Resources\Devices\Widgets\DeviceTopApps;
@@ -88,7 +89,7 @@ class ViewDevice extends ViewRecord
 
     protected function getHeaderWidgets(): array
     {
-        return [DeviceLiveStatus::class, DeviceLiveView::class];
+        return [DeviceLiveStatus::class, DeviceLiveView::class, DeviceLiveConsole::class];
     }
 
     /** Data use, apps, websites and battery (Milestone B), below the tabs. */

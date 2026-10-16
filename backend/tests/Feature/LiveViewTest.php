@@ -3,11 +3,13 @@
 namespace Tests\Feature;
 
 use App\Filament\Resources\Devices\Pages\ViewDevice;
+use App\Filament\Resources\Devices\Widgets\DeviceLiveConsole;
 use App\Filament\Resources\Devices\Widgets\DeviceLiveView;
 use App\Mdm\Models\Command;
 use App\Mdm\Models\Device;
 use App\Mdm\Models\DeviceCredential;
 use App\Mdm\Role;
+use App\Mdm\Services\CommandService;
 use App\Mdm\Services\EnrollmentService;
 use App\Mdm\Services\LiveView;
 use App\Models\User;
@@ -56,6 +58,46 @@ class LiveViewTest extends TestCase
         $this->withToken($this->token)->postJson('/api/device/v1/live', ['samples' => [$this->sample(100)]])
             ->assertOk()->assertJson(['continue' => false]);
         $this->assertDatabaseHas('mdm_audit_log', ['action' => 'live_view.stopped']);
+    }
+
+    public function test_the_console_shows_app_speeds_phone_events_and_admin_actions(): void
+    {
+        $admin = User::factory()->create(['role' => Role::SuperAdmin, 'name' => 'Daniel']);
+        $this->actingAs($admin);
+        app(LiveView::class)->start($this->device);
+        $this->travel(1)->seconds();
+
+        $sample = $this->sample(4_200_000) + [
+            'apps' => [
+                ['package' => 'com.android.chrome', 'label' => 'Chrome', 'rx_bps' => 3_100_000, 'tx_bps' => 200_000],
+                ['package' => 'com.whatsapp', 'label' => 'WhatsApp', 'rx_bps' => 600_000, 'tx_bps' => 0],
+            ],
+            'apps_age_s' => 12,
+        ];
+        $this->withToken($this->token)->postJson('/api/device/v1/live', [
+            'samples' => [$sample],
+            'events' => [['at' => now()->toIso8601ZuluString(), 'text' => 'Network changed: Wi-Fi -> Mobile data']],
+        ])->assertOk();
+        $this->travel(1)->seconds();
+        app(CommandService::class)->send($this->device, 'lock');
+
+        Livewire::test(DeviceLiveConsole::class, ['record' => $this->device])
+            ->assertSee('Chrome ↓3.1 Mbps ↑200 kbps')
+            ->assertSee('WhatsApp ↓600 kbps')
+            ->assertSee('(apps 12s ago)')
+            ->assertSee('Network changed: Wi-Fi -&gt; Mobile data', false)
+            ->assertSee('Command sent: Lock now (by Daniel)')
+            ->assertSeeInOrder(['Live view started', 'Chrome', 'Network changed', 'Command sent: Lock now']);
+    }
+
+    public function test_events_alone_are_accepted_and_nothing_is_kept_without_a_session(): void
+    {
+        $this->withToken($this->token)->postJson('/api/device/v1/live', [
+            'samples' => [], 'events' => [['at' => now()->toIso8601ZuluString(), 'text' => 'Charger plugged in']],
+        ])->assertOk()->assertJson(['continue' => false]);
+
+        app(CommandService::class)->send($this->device, 'lock');
+        $this->assertCount(1, app(LiveView::class)->lines($this->device)); // the phone's line; the server adds none
     }
 
     public function test_the_session_ends_on_its_own(): void

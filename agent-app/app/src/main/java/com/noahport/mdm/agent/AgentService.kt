@@ -41,13 +41,17 @@ class AgentService : Service() {
     private val power = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
-                Intent.ACTION_POWER_CONNECTED, Intent.ACTION_POWER_DISCONNECTED -> changed()
+                Intent.ACTION_POWER_CONNECTED, Intent.ACTION_POWER_DISCONNECTED -> {
+                    LiveFeed.add(if (intent.action == Intent.ACTION_POWER_CONNECTED) "Charger plugged in" else "Charger unplugged")
+                    changed()
+                }
                 Intent.ACTION_BATTERY_CHANGED -> {
                     val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
                     val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, 100)
                     val charging = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0
                     val step = if (level >= 0) level * 100 / scale / 5 else -1
                     val first = lastBatteryStep == -1
+                    if (!first && step != lastBatteryStep) LiveFeed.add("Battery ${level * 100 / scale}%")
                     if (!first && (step != lastBatteryStep || charging != lastCharging)) changed()
                     lastBatteryStep = step
                     lastCharging = charging
@@ -64,11 +68,18 @@ class AgentService : Service() {
                 else -> "other"
             }
             if (lastNetwork != null && type != lastNetwork) {
+                LiveFeed.add("Network changed: ${label(lastNetwork)} -> ${label(type)}")
                 changed()
                 RealtimeChannel.reconnect() // the old connection is dead on the old network; don't wait for its timeout
             }
             lastNetwork = type
         }
+    }
+
+    private fun label(network: String?) = when (network) {
+        "wifi" -> "Wi-Fi"
+        "mobile" -> "Mobile data"
+        else -> "Other"
     }
 
     override fun onCreate() {

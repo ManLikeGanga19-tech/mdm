@@ -7,8 +7,7 @@ _Last updated: 2026-10-16 (v1.0.0)_
 ## Current state (v1.0.0, 2026-10-16)
 **Production-ready; rollout to the remaining RugKings starts 2026-10-17.** Live at
 https://mdm.94-72-102-13.sslip.io/admin. Agent and NoahportEnroll **1.0.0** (release build, permanent key); 91
-feature tests pass. In the field: one RugKing (agent 0.11.0, updated to 1.0.0 by plugging it into the tool) and the
-Neon test phone NP-TEST-02 (1.0.0; to be removed before the rollout with `mdm:remove-devices`).
+feature tests pass. No phones in production yet (rollout 2026-10-17); the Neon test phone ran every release up to 1.0.0.
 
 Working end to end: USB enrollment from any Windows laptop (adb fetched automatically; battery allowlist; updates
 enrolled phones), real-time control (Mercure + FCM, ~1 s; confirmed on the RugKing and the Neon), policies (hotspot,
@@ -16,8 +15,11 @@ blocked apps, network logging), commands, handover lock, telemetry (usage, websi
 console (app figures ~10 s old, confirmed), shift report, editable roles/permissions + accounts, crews on a weekly
 roster with coordinator-to-coordinator handover and the My shift page, "not allowed" page.
 
-Before the rollout (with the user): remove the Neon test record (`mdm:remove-devices NP-TEST-02`, dry run first;
-keep accounts, roles, crews, roster, clerks and the RugKing), invite the coordinators, create Crew 1–3, set clerks'
+Production cleared 2026-10-16 (user-approved): the Neon (enrolled as NPS-001; no RugKing had ever enrolled into
+production, per the audit log) was removed with `mdm:remove-devices NPS-001 --force`; production now has 0 phones, 3
+accounts, 3 roles, 1 crew, 1 clerk, empty roster; code "RugKing pilot rollout" has 5 uses left (expires 2026-10-23).
+The Neon still runs the agent as device owner (check-ins refused): factory reset it before reuse. Before the rollout:
+invite the coordinators, create Crew 1–3, set clerks'
 crews, generate the roster. Not yet tested in the field: a full crew handover at a real shift change (covered by
 tests incl. the night → morning one across midnight).
 

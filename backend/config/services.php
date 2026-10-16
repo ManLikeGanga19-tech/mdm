@@ -42,4 +42,15 @@ return [
         'credentials' => env('FCM_CREDENTIALS_PATH'),
     ],
 
+    // Real-time channel to the phones: the Mercure hub built into FrankenPHP (`frankenphp php-server --mercure`), which
+    // reads the same MERCURE_* variables. Phones hold a server-sent-events connection to `public_url`; the server
+    // publishes wake-ups to `internal_url` (inside the Docker network). Both JWT keys are secrets.
+    'mercure' => [
+        'public_url' => env('MERCURE_RESOURCE_IDENTIFIER'), // the hub's public URL, also the tokens' audience
+        'internal_url' => env('MERCURE_INTERNAL_URL', 'http://app/.well-known/mercure'),
+        'issuer' => env('MERCURE_TRUSTED_ISSUERS', 'noahport-mdm'),
+        'publisher_key' => env('MERCURE_PUBLISHER_JWT_KEY'),
+        'subscriber_key' => env('MERCURE_SUBSCRIBER_JWT_KEY'),
+    ],
+
 ];

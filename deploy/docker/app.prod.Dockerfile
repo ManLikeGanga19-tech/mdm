@@ -21,4 +21,5 @@ RUN composer dump-autoload --optimize --no-dev \
     && php artisan package:discover --ansi
 
 ENV SERVER_NAME=":80"
-CMD ["frankenphp", "php-server", "--listen", ":80", "--root", "/app/public"]
+# --mercure: the real-time hub the phones keep a connection to (/.well-known/mercure, see PushService).
+CMD ["frankenphp", "php-server", "--listen", ":80", "--root", "/app/public", "--mercure"]

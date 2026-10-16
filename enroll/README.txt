@@ -11,8 +11,12 @@ ONE-TIME SETUP ON THE LAPTOP
 1. Download NoahportEnroll-<version>.exe from the OneDrive link IT gave you,
    e.g. into Documents\Noahport.
 2. Right-click the exe > Properties > tick "Unblock" (if shown) > OK.
-3. The first run downloads Android Platform-Tools (adb, about 7 MB) from Google
-   into your user folder. If the laptop has no internet, download
+3. Android Studio is NOT needed. The tool's first step (before it asks for
+   anything) is adb, the Android USB tool: if the laptop already has a working
+   adb (Android Studio, an earlier run, or one beside the exe) it says
+   "adb is already installed ... Skipping the download" and carries on;
+   otherwise it downloads Android Platform-Tools (about 7 MB) from Google into
+   your user folder. If the laptop has no internet, download
    "SDK Platform-Tools for Windows" from
    https://developer.android.com/tools/releases/platform-tools
    and unzip it next to the exe (so that platform-tools\adb.exe is beside it).
@@ -72,6 +76,13 @@ ENROLL
    Close the window when you are finished.
    (A phone that failed: fix the problem, then unplug and plug it back in.)
 
+UPDATING AN ENROLLED PHONE
+--------------------------
+Plug an already-enrolled phone in while the tool runs (USB debugging on): it
+says "already enrolled", updates the phone's agent to the version inside the
+tool (nothing is erased) and puts it on the battery allowlist, so actions
+from the admin site reach it instantly even when it has been idle.
+
 Every phone (enrolled or not) is recorded in Documents\Noahport\enrollments.csv
 on this laptop. Send that file to IT after each session.
 
@@ -80,6 +91,10 @@ IF SOMETHING GOES WRONG
 -----------------------
 "Waiting for a phone..."      Try another cable or USB port (many cables are charge-only).
                               On the phone: pull down notifications > USB > "File transfer".
+                              Still waiting: open Device Manager on the laptop. If the phone
+                              shows with a yellow mark (e.g. "ADB Interface"), Windows has no
+                              USB driver for it: IT installs Google's USB driver or the
+                              phone maker's once (needs admin rights).
 "Allow USB debugging?" never  Developer options > Revoke USB debugging authorizations,
  appears                      then unplug and plug back in.
 "has 1 account(s)"            Someone signed in during setup. Factory reset and skip sign-ins.

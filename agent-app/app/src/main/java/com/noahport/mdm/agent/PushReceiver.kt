@@ -10,13 +10,14 @@ import java.util.concurrent.TimeUnit
 
 /**
  * Firebase wake-ups from the server's PushService. A message only says "check in now"; policy and commands are
- * always fetched over the authenticated API. High-priority FCM lets the expedited check-in run right away.
+ * always fetched over the authenticated API. The same wake-up also comes over RealtimeChannel; Agent.wake runs the
+ * check-in once, for whichever arrives first. High-priority FCM lets the phone use the network even in Doze.
  */
 class PushReceiver : FirebaseMessagingService() {
 
     override fun onMessageReceived(message: RemoteMessage) {
         if (message.data["type"] == "checkin" && Agent.isEnrolled(this)) {
-            Agent.checkInNow(this, expedited = true)
+            Agent.wake(this, message.data["id"])
         }
     }
 

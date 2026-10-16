@@ -6,6 +6,7 @@ use App\Mdm\Models\Command;
 use App\Mdm\Models\Device;
 use App\Mdm\Services\HandoverService;
 use App\Mdm\Services\PolicyBuilder;
+use App\Mdm\Services\PushService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -18,7 +19,7 @@ class CheckinController
 {
     public const INTERVAL_SECONDS = 900;
 
-    public function __invoke(Request $request, PolicyBuilder $policies, HandoverService $handovers): JsonResponse
+    public function __invoke(Request $request, PolicyBuilder $policies, HandoverService $handovers, PushService $push): JsonResponse
     {
         /** @var Device $device */
         $device = $request->attributes->get('device');
@@ -49,6 +50,7 @@ class CheckinController
             $device->applied_policy_version = $data['applied_policy_version'];
         }
         $device->save();
+        $push->checkedIn($device);
 
         // Battery and network history (Milestone B), one row per check-in.
         $device->statusReports()->create([
@@ -74,6 +76,8 @@ class CheckinController
             'asset_tag' => $device->asset_tag,
             'holder' => $handovers->holderAt($device, now())?->name,
             'server_time' => now()->toIso8601ZuluString(),
+            // The real-time channel (hub, topic, token); the agent keeps a connection open to it for instant wake-ups.
+            'realtime' => $push->realtimeFor($device),
         ]);
     }
 }

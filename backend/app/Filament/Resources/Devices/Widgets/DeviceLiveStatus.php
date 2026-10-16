@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Devices\Widgets;
 
 use App\Mdm\Models\Device;
 use App\Mdm\Services\HandoverEnforcement;
+use App\Mdm\Services\PushService;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Database\Eloquent\Model;
@@ -28,6 +29,8 @@ class DeviceLiveStatus extends StatsOverviewWidget
         /** @var Device $device */
         $device = $this->record->fresh(['currentAssignment.clerk']);
         $online = $device->last_checkin_at?->gte(now()->subMinutes(20));
+        // How long the phone took to answer the last action sent to it (handover, lock, rule change...).
+        $wake = app(PushService::class)->wakeLatency($device);
 
         return [
             Stat::make('Battery', $device->battery_percent === null ? '—' : $device->battery_percent.'%')
@@ -43,7 +46,7 @@ class DeviceLiveStatus extends StatsOverviewWidget
                 'wifi' => 'Wi-Fi', 'mobile' => 'Mobile data', 'none' => 'Offline', null => '—', default => ucfirst($device->network_type),
             })->descriptionIcon('heroicon-m-signal')->description('Current connection'),
             Stat::make('Last contact', $device->last_checkin_at?->diffForHumans() ?? 'Never')
-                ->description($online ? 'Reachable' : 'Not heard from recently')
+                ->description(($online ? 'Reachable' : 'Not heard from recently').($wake ? ' · last action reached it in '.$wake['seconds'].' s' : ''))
                 ->descriptionIcon($online ? 'heroicon-m-check-circle' : 'heroicon-m-exclamation-triangle')
                 ->color($online ? 'success' : 'warning'),
             app(HandoverEnforcement::class)->isLocked($device)

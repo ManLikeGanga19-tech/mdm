@@ -6,7 +6,9 @@
 // and the next one is suggested. The clerk is attached later, at the shift handover on the admin site.
 // The enrollment code comes from the admin site (Enrollment codes); it is remembered on this laptop (encrypted for
 // this Windows user) and reused while the server still accepts it.
-// adb (Android Platform-Tools) is downloaded from Google on first use unless it sits next to the exe or on PATH.
+// First step, before anything is asked: adb (Android Platform-Tools). An adb already on the laptop (next to the exe,
+// from an earlier run, or on PATH) is used if it runs; otherwise it is downloaded from Google into the user folder.
+// Phones that are already enrolled get their agent updated to the one inside this tool.
 //
 // Double-click to run. Test flags: --once --asset-tag X [--code C] [--server URL]; ANDROID_SERIAL picks a phone.
 using System;
@@ -101,8 +103,12 @@ static class Program
         Say("");
 
         apk = ExtractAgent();
+        // adb first, before anything is asked: a laptop without it gets it now, one that has it moves straight on.
+        Say("Step 1 of 2: Android tools (adb)", ConsoleColor.White);
         adb = FindAdb();
-        Adb("start-server");
+        StartAdbServer();
+        Say("");
+        Say("Step 2 of 2: enrollment code", ConsoleColor.White);
         server = (serverArg != "" ? serverArg : Meta["ServerUrl"]).TrimEnd('/');
         if (!server.StartsWith("https://")) throw new InvalidOperationException($"Server address must start with https:// (got '{server}').");
         Say("Server: " + server);
@@ -173,7 +179,7 @@ static class Program
 
         var owners = Shell("dpm list-owners");
         if (owners.Contains(Component + ",DeviceOwner"))
-            throw new EnrollException("This phone is already enrolled (the agent is device owner). Nothing changed.", alreadyEnrolled: true);
+            throw new EnrollException("This phone is already enrolled. " + UpdateEnrolledPhone(), alreadyEnrolled: true);
         if (!owners.Contains("no owners"))
             throw new EnrollException($"Another app manages this phone: {owners}. Factory reset it first.");
 
@@ -219,6 +225,10 @@ static class Program
         if (!Shell("dpm list-owners").Contains(Component + ",DeviceOwner"))
             throw new EnrollException("set-device-owner reported success but the agent is not device owner.");
 
+        Step("Letting it stay connected while the phone sleeps");
+        if (!AllowWhileIdle())
+            Say("    Could not add the agent to the battery allowlist: actions may reach this phone more slowly while it is idle.", ConsoleColor.Yellow);
+
         Step("Registering it with the server");
         // Labels match LabelPattern, the code CodePattern and the server is a checked https URL: no quotes or spaces,
         // so single-quoting is safe for the phone's shell.
@@ -231,6 +241,42 @@ static class Program
         Shell($"am start -n {Package}/.MainActivity");
         Say("    The phone now registers itself and appears on the admin site within a minute (it needs internet).", ConsoleColor.Gray);
         Say("    Attach it to a clerk later, at the shift handover on the admin site.", ConsoleColor.Gray);
+    }
+
+    /// <summary>
+    /// Doze (Android's deep sleep for idle phones) cuts apps off the network, device owners included, which would
+    /// silence the agent's real-time connection. The battery allowlist keeps it connected; Android keeps the list
+    /// across restarts. Only adb (or the user) can add an app to it.
+    /// </summary>
+    static bool AllowWhileIdle()
+    {
+        Shell($"dumpsys deviceidle whitelist +{Package}");
+        return Shell("dumpsys deviceidle whitelist").Contains("," + Package + ",");
+    }
+
+    /// <summary>
+    /// A phone that is already enrolled: brings its agent up to the version in this tool (same signing key, data and
+    /// device ownership kept) and puts it on the battery allowlist. Returns what was done, for the console and CSV.
+    /// </summary>
+    static string UpdateEnrolledPhone()
+    {
+        var installed = Regex.Match(Shell($"dumpsys package {Package}"), @"versionName=(\S+)").Groups[1].Value;
+        string done;
+        if (installed == Meta["AgentVersion"])
+        {
+            done = $"Its agent is up to date ({installed}).";
+        }
+        else
+        {
+            Step($"Updating the agent from {(installed == "" ? "?" : installed)} to {Meta["AgentVersion"]}");
+            var install = Adb("-s", serial, "install", "-r", apk);
+            done = Regex.IsMatch(install, @"(?m)^Success")
+                ? $"Agent updated from {installed} to {Meta["AgentVersion"]}."
+                : install.Contains("INSTALL_FAILED_VERSION_DOWNGRADE")
+                    ? $"It has a newer agent ({installed}) than this tool ({Meta["AgentVersion"]}): left as is."
+                    : "Updating the agent failed: " + install;
+        }
+        return done + (AllowWhileIdle() ? " Battery allowlist: on." : " Could not set the battery allowlist.");
     }
 
     /// <summary>
@@ -453,12 +499,25 @@ static class Program
             Path.Combine(DataDir, "platform-tools", "adb.exe"),
         }.Concat((Environment.GetEnvironmentVariable("PATH") ?? "").Split(';')
             .Where(p => p.Trim() != "").Select(p => Path.Combine(p.Trim(), "adb.exe")));
+        // An adb that is already on this laptop (ours from an earlier run, Android Studio's, or any on PATH) is used
+        // as is, once it proves it runs; a broken one is skipped rather than failing the session.
         foreach (var c in candidates)
         {
-            try { if (File.Exists(c)) return c; } catch (ArgumentException) { } // malformed PATH entry
+            try
+            {
+                if (!File.Exists(c)) continue;
+            }
+            catch (ArgumentException) { continue; } // malformed PATH entry
+            var version = AdbVersion(c);
+            if (version != null)
+            {
+                Say($"    adb is already installed ({version}, {c}). Skipping the download.", ConsoleColor.Green);
+                return c;
+            }
+            Say($"    Found {c} but it does not run; skipping it.", ConsoleColor.Yellow);
         }
 
-        Say("adb not found. Downloading Android Platform-Tools from Google (about 7 MB)...");
+        Say("    adb is not installed. Downloading Android Platform-Tools from Google (about 7 MB)...");
         var zip = Path.Combine(DataDir, "platform-tools.zip");
         try
         {
@@ -471,11 +530,55 @@ static class Program
                 "from https://developer.android.com/tools/releases/platform-tools and unzip it next to NoahportEnroll.exe, " +
                 "so that platform-tools\\adb.exe sits beside it.");
         }
+        // Unpack beside the old copy and swap, so a half-written or locked folder never leaves the laptop without adb.
         var target = Path.Combine(DataDir, "platform-tools");
-        if (Directory.Exists(target)) Directory.Delete(target, recursive: true);
-        ZipFile.ExtractToDirectory(zip, DataDir);
+        var staging = Path.Combine(DataDir, "platform-tools-new");
+        if (Directory.Exists(staging)) Directory.Delete(staging, recursive: true);
+        ZipFile.ExtractToDirectory(zip, staging);
         File.Delete(zip);
-        return Path.Combine(target, "adb.exe");
+        if (Directory.Exists(target)) Directory.Delete(target, recursive: true);
+        Directory.Move(Path.Combine(staging, "platform-tools"), target);
+        Directory.Delete(staging, recursive: true);
+
+        var adbPath = Path.Combine(target, "adb.exe");
+        var installed = AdbVersion(adbPath) ?? throw new InvalidOperationException(
+            "The downloaded adb does not run. The laptop's security software may be blocking it: ask IT to allow " + adbPath);
+        Say($"    adb installed ({installed}).", ConsoleColor.Green);
+        return adbPath;
+    }
+
+    /// <summary>"Android Debug Bridge version x.y.z" of the adb at <paramref name="path"/>, or null if it doesn't run.</summary>
+    static string AdbVersion(string path)
+    {
+        try
+        {
+            adb = path;
+            var output = Adb("version");
+            var m = Regex.Match(output, @"Android Debug Bridge version (\S+)");
+            return m.Success ? "version " + m.Groups[1].Value : null;
+        }
+        catch (Exception)
+        {
+            return null; // blocked by security software, wrong architecture, damaged...
+        }
+        finally
+        {
+            adb = null;
+        }
+    }
+
+    /// <summary>
+    /// Starts adb's background server. Another program's adb of a different version may already be running one; adb
+    /// replaces it by itself, so a failure is retried once after stopping whatever server is there.
+    /// </summary>
+    static void StartAdbServer()
+    {
+        var output = Adb("start-server");
+        if (!output.Contains("failed") && !output.Contains("error")) return;
+        Adb("kill-server");
+        output = Adb("start-server");
+        if (output.Contains("failed") || output.Contains("error"))
+            throw new InvalidOperationException("adb could not start: " + output + " Close other phone tools (Android Studio, phone suites) and try again.");
     }
 
     // ---- adb ----

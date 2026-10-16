@@ -5,6 +5,12 @@ cd /opt/noahport-mdm
 git pull --ff-only
 
 dc() { docker compose -f deploy/docker-compose.prod.yml "$@"; }
+
+# Real-time hub keys (Mercure, see docker-compose.prod.yml): generated once, kept in deploy/.env (mode 600).
+if ! grep -q '^MERCURE_PUBLISHER_JWT_KEY=' deploy/.env; then
+  printf 'MERCURE_PUBLISHER_JWT_KEY=%s\nMERCURE_SUBSCRIBER_JWT_KEY=%s\nMERCURE_RESOURCE_IDENTIFIER=%s\n' \
+    "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" "https://mdm.94-72-102-13.sslip.io/.well-known/mercure" >> deploy/.env
+fi
 dc build app
 dc up -d --remove-orphans
 dc exec -T app php artisan migrate --force

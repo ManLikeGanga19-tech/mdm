@@ -12,6 +12,13 @@ x-app: &app
   volumes:
     - ./backend:/app
     - vendor:/app/vendor
+  # Real-time hub (FrankenPHP's Mercure, see the app command). Development-only keys; production's are in deploy/.env.
+  environment:
+    MERCURE_PUBLISHER_JWT_KEY: dev-only-publisher-key-0123456789abcdef
+    MERCURE_SUBSCRIBER_JWT_KEY: dev-only-subscriber-key-0123456789abcdef
+    MERCURE_RESOURCE_IDENTIFIER: ${MERCURE_RESOURCE_IDENTIFIER:-http://localhost:8080/.well-known/mercure} # a tunnel address when testing phones
+    MERCURE_TRUSTED_ISSUERS: noahport-mdm
+    MERCURE_INTERNAL_URL: http://app/.well-known/mercure
   depends_on:
     postgres:
       condition: service_healthy
@@ -24,7 +31,7 @@ services:
     ports:
       - "8080:80"
     # FrankenPHP serves public/ over plain HTTP in development; TLS is the VPS reverse proxy's job.
-    command: frankenphp php-server --listen :80 --root /app/public
+    command: frankenphp php-server --listen :80 --root /app/public --mercure
     healthcheck:
       test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost/up"]
       interval: 15s

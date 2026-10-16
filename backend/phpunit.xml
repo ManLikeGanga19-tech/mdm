@@ -27,6 +27,9 @@
         <env name="DB_DATABASE" value="mdm_test" force="true"/>
         <env name="DB_URL" value="" force="true"/>
         <env name="MAIL_MAILER" value="array" force="true"/>
+        <!-- The real-time hub is off in tests (the dev containers have its keys); PushServiceTest turns it on with fakes. -->
+        <env name="MERCURE_RESOURCE_IDENTIFIER" value="" force="true"/>
+        <server name="MERCURE_RESOURCE_IDENTIFIER" value="" force="true"/>
         <env name="QUEUE_CONNECTION" value="sync" force="true"/>
         <env name="SESSION_DRIVER" value="array" force="true"/>
         <env name="PULSE_ENABLED" value="false"/>

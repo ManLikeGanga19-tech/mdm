@@ -34,7 +34,7 @@ class AgentService : Service() {
     private var lastBatteryStep = -1
     private var lastCharging: Boolean? = null
 
-    private val reportSoon = Runnable { Agent.checkInNow(this, expedited = true) }
+    private val reportSoon = Runnable { Agent.checkInNow(this) }
 
     private val live by lazy { LiveSampler(this) { handler.post { updateNotification(live = false) } } }
 
@@ -63,7 +63,10 @@ class AgentService : Service() {
                 caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "mobile"
                 else -> "other"
             }
-            if (lastNetwork != null && type != lastNetwork) changed()
+            if (lastNetwork != null && type != lastNetwork) {
+                changed()
+                RealtimeChannel.reconnect() // the old connection is dead on the old network; don't wait for its timeout
+            }
             lastNetwork = type
         }
     }
@@ -88,6 +91,7 @@ class AgentService : Service() {
             addAction(Intent.ACTION_BATTERY_CHANGED)
         })
         getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(network)
+        RealtimeChannel.start(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -99,6 +103,7 @@ class AgentService : Service() {
     }
 
     override fun onDestroy() {
+        RealtimeChannel.stop()
         runCatching { unregisterReceiver(power) }
         runCatching { getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(network) }
         handler.removeCallbacks(reportSoon)

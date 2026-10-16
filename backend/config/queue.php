@@ -69,7 +69,9 @@ return [
             'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
             'queue' => env('REDIS_QUEUE', 'default'),
             'retry_after' => (int) env('REDIS_QUEUE_RETRY_AFTER', 90),
-            'block_for' => null,
+            // Workers wait on Redis (BLPOP) instead of polling every 3 s, so a wake-up job starts the moment it is
+            // queued: actions on a phone are meant to be real time.
+            'block_for' => 5,
             'after_commit' => false,
         ],
 

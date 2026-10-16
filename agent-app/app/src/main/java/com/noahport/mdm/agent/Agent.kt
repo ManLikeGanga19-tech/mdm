@@ -7,7 +7,6 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.OutOfQuotaPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import java.util.concurrent.TimeUnit
@@ -44,14 +43,33 @@ object Agent {
     }
 
     /**
-     * One check-in as soon as possible (after enrolling or applying new rules, when the app is opened, on a push).
-     * [expedited] asks Android to run it immediately; used for push wake-ups, which grant that allowance.
+     * One check-in right now (after enrolling or applying new rules, when the app is opened, on a wake-up from the
+     * server). Runs on the agent's own thread; WorkManager only takes over if it can't reach the server.
      */
-    fun checkInNow(context: Context, expedited: Boolean = false) {
+    fun checkInNow(context: Context) = Checkin.runSoon(context)
+
+    private val recentWakeIds = ArrayDeque<String>()
+
+    /**
+     * A "check in now" from the server. The same wake-up arrives over the real-time channel and Firebase (same [id]);
+     * whichever comes first triggers the check-in and the other is ignored.
+     */
+    fun wake(context: Context, id: String?) {
+        if (id != null) {
+            synchronized(recentWakeIds) {
+                if (id in recentWakeIds) return
+                recentWakeIds.addLast(id)
+                if (recentWakeIds.size > 20) recentWakeIds.removeFirst()
+            }
+        }
+        checkInNow(context)
+    }
+
+    /** WorkManager fallback for a check-in that failed (no network, server down): retried with backoff. */
+    fun scheduleCheckinRetry(context: Context) {
         val request = OneTimeWorkRequestBuilder<CheckinWorker>()
             .setConstraints(online)
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
-            .apply { if (expedited) setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST) }
             .build()
         WorkManager.getInstance(context).enqueueUniqueWork(WORK_CHECKIN_NOW, ExistingWorkPolicy.REPLACE, request)
     }

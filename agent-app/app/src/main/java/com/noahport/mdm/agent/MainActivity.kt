@@ -195,7 +195,7 @@ class MainActivity : Activity() {
             this,
             "INFO enrollmentToken=${if (enrollment.contains(EnrollmentTokenReceiver.EXTRA_TOKEN)) "present" else "none"} " +
                 "assetTag=${enrollment.getString(EnrollmentTokenReceiver.EXTRA_ASSET_TAG, "")} " +
-                "assignedTo=${enrollment.getString(EnrollmentTokenReceiver.EXTRA_ASSIGNED_TO, "")}",
+                "holder=${enrollment.getString(EnrollmentTokenReceiver.KEY_HOLDER, "")}",
         )
         val agent = Agent.prefs(this)
         SpikeLog.log(

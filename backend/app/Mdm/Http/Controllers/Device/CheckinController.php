@@ -4,6 +4,7 @@ namespace App\Mdm\Http\Controllers\Device;
 
 use App\Mdm\Models\Command;
 use App\Mdm\Models\Device;
+use App\Mdm\Services\HandoverService;
 use App\Mdm\Services\PolicyBuilder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,7 +18,7 @@ class CheckinController
 {
     public const INTERVAL_SECONDS = 900;
 
-    public function __invoke(Request $request, PolicyBuilder $policies): JsonResponse
+    public function __invoke(Request $request, PolicyBuilder $policies, HandoverService $handovers): JsonResponse
     {
         /** @var Device $device */
         $device = $request->attributes->get('device');
@@ -33,7 +34,15 @@ class CheckinController
             'applied_policy_version' => ['nullable', 'integer', 'min:0'],
             'notice_acknowledged_at' => ['nullable', 'date'],
             'fcm_token' => ['nullable', 'string', 'max:4096'],
+            'serial' => ['nullable', 'string', 'max:64'],
+            'imei' => ['nullable', 'string', 'max:32'],
         ]);
+
+        // A serial already on another phone's record (a phone re-enrolled under a new tag) is left for the admin to
+        // sort out rather than failing the check-in on the unique index.
+        if (filled($data['serial'] ?? null) && Device::query()->where('serial', $data['serial'])->whereKeyNot($device->id)->exists()) {
+            unset($data['serial']);
+        }
 
         $device->fill(array_filter($data, fn ($v) => $v !== null) + ['last_checkin_at' => now()]);
         if (array_key_exists('applied_policy_version', $data)) {
@@ -61,6 +70,9 @@ class CheckinController
                 'payload' => $c->payload ?? (object) [],
             ])->values(),
             'checkin_interval_seconds' => self::INTERVAL_SECONDS,
+            // For the staff notice: the clerk is attached at the shift handover, so the phone learns it from here.
+            'asset_tag' => $device->asset_tag,
+            'holder' => $handovers->holderAt($device, now())?->name,
             'server_time' => now()->toIso8601ZuluString(),
         ]);
     }

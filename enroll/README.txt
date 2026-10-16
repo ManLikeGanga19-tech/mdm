@@ -59,13 +59,18 @@ ENROLL
 ------
 1. Double-click NoahportEnroll-<version>.exe. A black window opens.
    Paste the enrollment code and press Enter; wait for "Code accepted".
+   The laptop remembers the code: next time just press Enter to reuse it
+   while it still has phones left.
 2. Plug in the phone with a DATA cable. On the phone tap "Allow" on
    "Allow USB debugging?" (tick "Always allow").
-3. Type the phone's asset tag (e.g. NP-0042) and press Enter.
-   Type the name of the person it is issued to, or just press Enter to skip.
+3. Type the asset tag on the phone's label (e.g. NP-0042) and press Enter.
+   From the second phone on, the next tag is suggested: press Enter to accept.
+   No clerk name is needed: clerks are attached later, at the shift handover
+   on the admin site.
 4. Wait for "DONE: ... is enrolled". The agent app opens on the phone.
-5. Unplug the phone, press Enter, and plug in the next one.
-   Type Q and Enter when you are finished.
+5. Unplug the phone and plug in the next one. Nothing to press.
+   Close the window when you are finished.
+   (A phone that failed: fix the problem, then unplug and plug it back in.)
 
 Every phone (enrolled or not) is recorded in Documents\Noahport\enrollments.csv
 on this laptop. Send that file to IT after each session.

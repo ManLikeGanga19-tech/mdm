@@ -60,6 +60,7 @@ class EnrollmentService
             $device->fill([
                 'asset_tag' => $info['asset_tag'],
                 'serial' => $info['serial'] ?? $device->serial,
+                'imei' => $info['imei'] ?? $device->imei,
                 'manufacturer' => $info['manufacturer'] ?? null,
                 'model' => $info['model'] ?? null,
                 'android_version' => $info['android_version'] ?? null,

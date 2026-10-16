@@ -66,7 +66,7 @@ class NoticeView(context: Context) : LinearLayout(context) {
         return context.getString(
             R.string.notice_device_info,
             prefs.getString(EnrollmentTokenReceiver.EXTRA_ASSET_TAG, "").orEmpty().ifEmpty { notSet },
-            prefs.getString(EnrollmentTokenReceiver.EXTRA_ASSIGNED_TO, "").orEmpty().ifEmpty { notSet },
+            prefs.getString(EnrollmentTokenReceiver.KEY_HOLDER, "").orEmpty().ifEmpty { notSet },
             context.getString(if (owner) R.string.notice_yes else R.string.notice_no),
             version,
             Agent.prefs(context).getString(Agent.KEY_LAST_CHECKIN, null)

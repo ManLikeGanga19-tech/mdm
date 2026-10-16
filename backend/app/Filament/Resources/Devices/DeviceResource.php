@@ -137,6 +137,7 @@ class DeviceResource extends Resource
                     TextEntry::make('android_version')->label('Android')->placeholder('-'),
                     TextEntry::make('security_patch')->label('Security patch')->placeholder('-'),
                     TextEntry::make('serial')->placeholder('-')->copyable(),
+                    TextEntry::make('imei')->label('IMEI')->placeholder('-')->copyable(),
                     TextEntry::make('agent_version_name')->label('Agent version')->placeholder('-'),
                     TextEntry::make('enrolled_at')->label('Enrolled')->dateTime()->placeholder('-'),
                     TextEntry::make('notice_acknowledged_at')->label('Staff notice acknowledged')->dateTime()->placeholder('Not yet'),

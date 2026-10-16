@@ -27,13 +27,11 @@ class EnrollmentTokenReceiver : BroadcastReceiver() {
             server != null && !server.startsWith("https://") -> setResultCode(RESULT_BAD_SERVER)
             else -> {
                 val assetTag = intent.getStringExtra(EXTRA_ASSET_TAG).orEmpty()
-                val assignedTo = intent.getStringExtra(EXTRA_ASSIGNED_TO).orEmpty()
                 SecureStore.putString(context, SECRET_ENROLLMENT_CODE, token)
                 prefs(context).edit()
                     .putString(EXTRA_TOKEN, "present") // the code itself is kept encrypted in SecureStore
                     .putString(EXTRA_SERVER, server)
                     .putString(EXTRA_ASSET_TAG, assetTag)
-                    .putString(EXTRA_ASSIGNED_TO, assignedTo)
                     .putString(KEY_RECEIVED_AT, Instant.now().toString())
                     .apply()
                 // Never log the code itself: it admits phones to the fleet.
@@ -49,9 +47,11 @@ class EnrollmentTokenReceiver : BroadcastReceiver() {
         const val EXTRA_TOKEN = "enrollment_token"
         const val EXTRA_SERVER = "api_base_url"
         const val EXTRA_ASSET_TAG = "asset_tag"
-        const val EXTRA_ASSIGNED_TO = "assigned_to"
         const val SECRET_ENROLLMENT_CODE = "enrollment_code"
         private const val KEY_RECEIVED_AT = "received_at"
+
+        /** Who holds the phone now, from the server at each check-in (set by the shift handover). */
+        const val KEY_HOLDER = "holder"
 
         const val RESULT_STORED = 1
         const val RESULT_NOT_DEVICE_OWNER = 2

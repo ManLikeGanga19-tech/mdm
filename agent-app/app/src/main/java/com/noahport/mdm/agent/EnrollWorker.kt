@@ -16,11 +16,13 @@ class EnrollWorker(context: Context, params: WorkerParameters) : Worker(context,
         val code = SecureStore.getString(ctx, EnrollmentTokenReceiver.SECRET_ENROLLMENT_CODE)
         if (server == null || code == null) return Result.failure()
 
+        AgentService.grantOwnPermissions(ctx) // before reading the serial and IMEI
         val info = DeviceInfo(ctx)
         val body = JSONObject()
             .put("enrollment_token", code)
             .put("asset_tag", enrollment.getString(EnrollmentTokenReceiver.EXTRA_ASSET_TAG, ""))
             .put("serial", info.serial)
+            .put("imei", info.imei)
             .put("manufacturer", Build.MANUFACTURER)
             .put("model", Build.MODEL)
             .put("android_version", Build.VERSION.RELEASE)

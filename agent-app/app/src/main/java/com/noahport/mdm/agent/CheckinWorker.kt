@@ -40,6 +40,11 @@ class CheckinWorker(context: Context, params: WorkerParameters) : Worker(context
             return Result.retry()
         }
         prefs.edit().putString(Agent.KEY_LAST_CHECKIN, Instant.now().toString()).remove(Agent.KEY_LAST_ERROR).apply()
+        // Asset tag and current holder for the notice: the clerk is attached at the shift handover, not at enrollment.
+        EnrollmentTokenReceiver.prefs(ctx).edit()
+            .apply { body.optString("asset_tag").takeIf { it.isNotEmpty() }?.let { putString(EnrollmentTokenReceiver.EXTRA_ASSET_TAG, it) } }
+            .putString(EnrollmentTokenReceiver.KEY_HOLDER, if (body.isNull("holder")) "" else body.optString("holder"))
+            .apply()
 
         val before = enforcer.appliedVersion
         val applied = enforcer.apply(body.getJSONObject("policy"))
@@ -78,6 +83,8 @@ class CheckinWorker(context: Context, params: WorkerParameters) : Worker(context
             .put("security_patch", Build.VERSION.SECURITY_PATCH)
             .put("agent_version_code", info.versionCode)
             .put("agent_version_name", info.versionName)
+            .apply { info.serial?.let { put("serial", it) } }
+            .apply { info.imei?.let { put("imei", it) } }
             .apply { if (appliedVersion >= 0) put("applied_policy_version", appliedVersion) }
             .apply { PushReceiver.currentToken(ctx)?.let { put("fcm_token", it) } }
             .apply {

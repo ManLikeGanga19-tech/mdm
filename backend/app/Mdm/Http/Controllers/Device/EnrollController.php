@@ -18,6 +18,7 @@ class EnrollController
             'enrollment_token' => ['required', 'string', 'max:100'],
             'asset_tag' => ['required', 'string', 'max:40', 'regex:/^[A-Za-z0-9 ._\/-]+$/'],
             'serial' => ['nullable', 'string', 'max:64'],
+            'imei' => ['nullable', 'string', 'max:32'],
             'manufacturer' => ['nullable', 'string', 'max:64'],
             'model' => ['nullable', 'string', 'max:64'],
             'android_version' => ['nullable', 'string', 'max:16'],

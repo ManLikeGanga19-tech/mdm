@@ -23,6 +23,8 @@
   <ItemGroup>
     <Reference Include="System.IO.Compression" />
     <Reference Include="System.IO.Compression.FileSystem" />
+    <!-- ProtectedData (DPAPI): keeps the enrollment code between sessions, readable only by this Windows user. -->
+    <Reference Include="System.Security" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(AgentApk)' != ''">

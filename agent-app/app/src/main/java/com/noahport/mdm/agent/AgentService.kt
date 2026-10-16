@@ -148,16 +148,25 @@ class AgentService : Service() {
             context.startForegroundService(Intent(context, AgentService::class.java).setAction(ACTION_LIVE).putExtra(EXTRA_SECONDS, seconds))
         }
 
+        /**
+         * Device owners may grant their own runtime permissions: notifications (otherwise the notice is hidden from the
+         * shade) and phone state (serial number and IMEI, see DeviceInfo).
+         */
+        fun grantOwnPermissions(context: Context) {
+            val dpm = context.getSystemService(DevicePolicyManager::class.java)
+            for (permission in listOf(Manifest.permission.POST_NOTIFICATIONS, Manifest.permission.READ_PHONE_STATE)) {
+                runCatching {
+                    dpm.setPermissionGrantState(
+                        AdminReceiver.component(context), context.packageName, permission, DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED,
+                    )
+                }.onFailure { SpikeLog.log(context, "FAIL granting $permission: $it") }
+            }
+        }
+
         /** Starts the service if it isn't running (called on enrollment, app open, boot and every check-in). */
         fun ensureRunning(context: Context) {
             if (!Agent.isEnrolled(context)) return
-            // Device owners may grant their own runtime permissions; without this the notice is hidden from the shade.
-            runCatching {
-                context.getSystemService(DevicePolicyManager::class.java).setPermissionGrantState(
-                    AdminReceiver.component(context), context.packageName,
-                    Manifest.permission.POST_NOTIFICATIONS, DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED,
-                )
-            }
+            grantOwnPermissions(context)
             runCatching { context.startForegroundService(Intent(context, AgentService::class.java)) }
                 .onFailure { SpikeLog.log(context, "FAIL starting agent service: $it") }
         }

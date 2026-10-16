@@ -1,13 +1,14 @@
 // Noahport MDM - USB enrollment for company laptops (docs/ARCHITECTURE.md section 3, "USB enrollment").
 //
 // For each freshly reset phone: checks it is safe to enroll, installs the embedded agent, makes it device owner,
-// hands it the server address, the enrollment code and its label (the agent then registers itself with the
-// server), and appends a row to Documents\Noahport\enrollments.csv.
-// The enrollment code comes from the admin site (Enrollment codes) and is asked for once per session.
+// hands it the server address, the enrollment code and its asset tag (the agent then registers itself with the
+// server), and appends a row to Documents\Noahport\enrollments.csv. The only thing typed per phone is the asset tag,
+// and the next one is suggested. The clerk is attached later, at the shift handover on the admin site.
+// The enrollment code comes from the admin site (Enrollment codes); it is remembered on this laptop (encrypted for
+// this Windows user) and reused while the server still accepts it.
 // adb (Android Platform-Tools) is downloaded from Google on first use unless it sits next to the exe or on PATH.
 //
-// Double-click to run. Test flags: --once --asset-tag X [--assigned-to Y] [--code C] [--server URL];
-// ANDROID_SERIAL picks a phone.
+// Double-click to run. Test flags: --once --asset-tag X [--code C] [--server URL]; ANDROID_SERIAL picks a phone.
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -31,7 +32,7 @@ sealed class EnrollException(string message, bool alreadyEnrolled = false) : Exc
 
 sealed class Phone
 {
-    public string Serial = "", Manufacturer = "", Model = "", Android = "", AssetTag = "", AssignedTo = "";
+    public string Serial = "", Manufacturer = "", Model = "", Android = "", AssetTag = "";
 }
 
 static class Program
@@ -47,7 +48,9 @@ static class Program
     static readonly string CsvPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Noahport", "enrollments.csv");
 
     static bool once;
-    static string assetTagArg = "", assignedToArg = "", codeArg = "", serverArg = "";
+    static readonly string SavedCodePath = Path.Combine(DataDir, "enrollment-code.bin");
+
+    static string assetTagArg = "", codeArg = "", serverArg = "";
     static string adb, apk, serial, server, code;
 
     static int Main(string[] args)
@@ -83,7 +86,6 @@ static class Program
             {
                 case "--once": once = true; break;
                 case "--asset-tag": assetTagArg = Next(); break;
-                case "--assigned-to": assignedToArg = Next(); break;
                 case "--code": codeArg = Next(); break;
                 case "--server": serverArg = Next(); break;
                 default: throw new ArgumentException("Unknown option " + args[i]);
@@ -152,20 +154,14 @@ static class Program
             }
 
             if (once) return exitCode;
-            assetTagArg = assignedToArg = "";
+            assetTagArg = "";
+            // No key press between phones: unplugging this one is the signal to start on the next. A phone that
+            // failed is retried the same way, by unplugging it and plugging it back in.
             Say("");
-            Console.Write("Unplug the phone. Press Enter for the next phone, or type Q and Enter to quit: ");
-            if ((Console.ReadLine() ?? "q").Trim().StartsWith("q", StringComparison.OrdinalIgnoreCase)) break;
-            var waited = false;
-            while (Devices().Any(d => d.serial == serial))
-            {
-                if (!waited) Say("Waiting for the previous phone to be unplugged...", ConsoleColor.Yellow);
-                waited = true;
-                Thread.Sleep(2000);
-            }
+            Say($"{enrolled} phone(s) enrolled this session. Unplug this phone, then plug in the next one.", ConsoleColor.White);
+            Say("When you are finished, just close this window.", ConsoleColor.Gray);
+            while (Devices().Any(d => d.serial == serial)) Thread.Sleep(1500);
         }
-        Say($"Enrolled {enrolled} phone(s) this session. Results: {CsvPath}", ConsoleColor.White);
-        return exitCode;
     }
 
     static void EnrollPhone(Phone phone)
@@ -192,8 +188,7 @@ static class Program
         var users = Regex.Matches(Shell("pm list users"), @"UserInfo\{").Count;
         if (users > 1) throw new EnrollException($"The phone has {users} users. Factory reset it.");
 
-        phone.AssetTag = ReadLabel("Asset tag (e.g. NP-0042): ", assetTagArg, required: true);
-        phone.AssignedTo = ReadLabel("Issued to (name, Enter to skip): ", assignedToArg, required: false);
+        phone.AssetTag = AskAssetTag(phone);
 
         Step("Installing the agent");
         var install = Adb("-s", serial, "install", "-r", apk);
@@ -229,20 +224,112 @@ static class Program
         // so single-quoting is safe for the phone's shell.
         var broadcast = Shell($"am broadcast --include-stopped-packages -n {Package}/.EnrollmentTokenReceiver " +
             $"--es api_base_url '{server}' --es enrollment_token '{code}' " +
-            $"--es asset_tag '{phone.AssetTag}' --es assigned_to '{phone.AssignedTo}'");
+            $"--es asset_tag '{phone.AssetTag}'");
         if (!Regex.IsMatch(broadcast, @"result=1\b"))
             throw new EnrollException("The agent did not accept the enrollment code: " + broadcast);
 
         Shell($"am start -n {Package}/.MainActivity");
         Say("    The phone now registers itself and appears on the admin site within a minute (it needs internet).", ConsoleColor.Gray);
+        Say("    Attach it to a clerk later, at the shift handover on the admin site.", ConsoleColor.Gray);
+    }
+
+    /// <summary>
+    /// Asks for the asset tag, suggesting the one after the last tag enrolled on this laptop (NP-0042 -> NP-0043),
+    /// and asks again before reusing a tag that this laptop already enrolled on a different phone: the server would
+    /// move that tag's record (and its history) onto this phone.
+    /// </summary>
+    static string AskAssetTag(Phone phone)
+    {
+        var history = ReadHistory();
+        var suggestion = assetTagArg == "" ? NextTag(history.LastOrDefault().tag) : "";
+        while (true)
+        {
+            var prompt = suggestion != "" ? $"Asset tag [{suggestion}] (Enter to accept, or type another): " : "Asset tag (e.g. NP-0042): ";
+            var tag = ReadLabel(prompt, assetTagArg, required: suggestion == "");
+            if (tag == "") tag = suggestion;
+            assetTagArg = "";
+
+            var other = history.LastOrDefault(h => h.tag.Equals(tag, StringComparison.OrdinalIgnoreCase) && h.serial != phone.Serial);
+            if (other.tag == null || once) return tag;
+            Say($"{tag} was already enrolled on another phone (serial {other.serial}) from this laptop.", ConsoleColor.Yellow);
+            Console.Write($"Move {tag} to this phone? Only do this if the label was moved. Type Y to confirm, Enter to pick another tag: ");
+            if ((Console.ReadLine() ?? "").Trim().StartsWith("y", StringComparison.OrdinalIgnoreCase)) return tag;
+            suggestion = NextTag(history.LastOrDefault().tag);
+        }
+    }
+
+    /// <summary>The trailing number incremented with its width kept: NP-0042 -> NP-0043, nps-asset009 -> nps-asset010.</summary>
+    static string NextTag(string last)
+    {
+        if (string.IsNullOrEmpty(last)) return "";
+        var m = Regex.Match(last, @"^(.*?)(\d+)$");
+        if (!m.Success) return "";
+        var next = (long.Parse(m.Groups[2].Value) + 1).ToString().PadLeft(m.Groups[2].Value.Length, '0');
+        return m.Groups[1].Value + next;
+    }
+
+    /// <summary>(asset tag, serial) of phones enrolled from this laptop, oldest first, from enrollments.csv.</summary>
+    static List<(string tag, string serial)> ReadHistory()
+    {
+        var rows = new List<(string, string)>();
+        if (!File.Exists(CsvPath)) return rows;
+        var lines = File.ReadAllLines(CsvPath);
+        if (lines.Length == 0) return rows;
+        var header = ParseCsvLine(lines[0]);
+        int result = header.IndexOf("Result"), tag = header.IndexOf("AssetTag"), ser = header.IndexOf("Serial");
+        if (result < 0 || tag < 0 || ser < 0) return rows;
+        foreach (var line in lines.Skip(1))
+        {
+            var f = ParseCsvLine(line);
+            if (f.Count > Math.Max(result, Math.Max(tag, ser)) && f[result] == "ENROLLED" && f[tag] != "") rows.Add((f[tag], f[ser]));
+        }
+        return rows;
+    }
+
+    static List<string> ParseCsvLine(string line)
+    {
+        var fields = new List<string>();
+        var current = new StringBuilder();
+        var quoted = false;
+        for (var i = 0; i < line.Length; i++)
+        {
+            var c = line[i];
+            if (quoted && c == '"' && i + 1 < line.Length && line[i + 1] == '"') { current.Append('"'); i++; }
+            else if (c == '"') quoted = !quoted;
+            else if (c == ',' && !quoted) { fields.Add(current.ToString()); current.Clear(); }
+            else current.Append(c);
+        }
+        fields.Add(current.ToString());
+        return fields;
     }
 
     static readonly Regex CodePattern = new(@"^[A-Za-z0-9-]{8,100}$");
 
-    /// <summary>Asks for the admin site's enrollment code until the server accepts it. Does not use it up.</summary>
+    /// <summary>
+    /// Asks for the admin site's enrollment code until the server accepts it, or reuses the code saved from an earlier
+    /// session while the server still accepts it (Enter keeps it). Checking does not use the code up.
+    /// </summary>
     static string AskEnrollmentCode()
     {
         var value = codeArg;
+        var saved = value == "" ? LoadSavedCode() : null;
+        if (saved != null)
+        {
+            var (status, body) = PostJson(server + "/api/device/v1/enrollment-code/check", $"{{\"enrollment_token\":\"{saved}\"}}");
+            if (status == 200)
+            {
+                Say($"Saved enrollment code \"{JsonField(body, "label")}\": phones go into {JsonField(body, "group") ?? "no group"}, " +
+                    $"{JsonField(body, "uses_left")} phone(s) left.", ConsoleColor.Green);
+                Console.Write("Press Enter to use it, or paste a new code: ");
+                value = (Console.ReadLine() ?? "").Trim();
+                if (value == "") return saved;
+            }
+            else if (status == 401)
+            {
+                Say("The saved enrollment code is used up or expired. Create a new one on the admin site.", ConsoleColor.Yellow);
+                ForgetSavedCode();
+            }
+        }
         while (true)
         {
             if (value == "")
@@ -264,6 +351,7 @@ static class Program
                     var label = JsonField(body, "label");
                     var group = JsonField(body, "group") ?? "no group";
                     Say($"Code accepted: \"{label}\", phones go into {group}, {JsonField(body, "uses_left")} phone(s) left.", ConsoleColor.Green);
+                    if (!once) SaveCode(value);
                     return value;
                 }
                 Say(status == 401
@@ -273,6 +361,32 @@ static class Program
             if (once) throw new InvalidOperationException("No valid enrollment code.");
             value = "";
         }
+    }
+
+    // The code admits phones to the fleet, so it is stored with DPAPI: only this Windows user on this laptop can read it.
+    static string LoadSavedCode()
+    {
+        try
+        {
+            if (!File.Exists(SavedCodePath)) return null;
+            var value = Encoding.UTF8.GetString(ProtectedData.Unprotect(File.ReadAllBytes(SavedCodePath), null, DataProtectionScope.CurrentUser));
+            return CodePattern.IsMatch(value) ? value : null;
+        }
+        catch (CryptographicException)
+        {
+            return null; // saved by another Windows user, or damaged
+        }
+    }
+
+    static void SaveCode(string value)
+    {
+        Directory.CreateDirectory(DataDir);
+        File.WriteAllBytes(SavedCodePath, ProtectedData.Protect(Encoding.UTF8.GetBytes(value), null, DataProtectionScope.CurrentUser));
+    }
+
+    static void ForgetSavedCode()
+    {
+        try { File.Delete(SavedCodePath); } catch (IOException) { }
     }
 
     static (int status, string body) PostJson(string url, string json)
@@ -450,7 +564,8 @@ static class Program
         var row = new[]
         {
             DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"), result, phone.Serial, phone.Manufacturer, phone.Model, phone.Android,
-            phone.AssetTag, phone.AssignedTo, Meta["AgentVersion"], Environment.MachineName, Environment.UserName, detail,
+            // AssignedTo stays empty (clerks are attached at the shift handover); kept so older files stay aligned.
+            phone.AssetTag, "", Meta["AgentVersion"], Environment.MachineName, Environment.UserName, detail,
         };
         using var w = new StreamWriter(CsvPath, append: true, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
         if (header) w.WriteLine("TimeUtc,Result,Serial,Manufacturer,Model,Android,AssetTag,AssignedTo,AgentVersion,Laptop,Operator,Detail");

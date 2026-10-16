@@ -9,6 +9,7 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.BatteryManager
 import android.os.Build
+import android.telephony.TelephonyManager
 
 /** Phone facts reported at enrollment and check-in. */
 class DeviceInfo(private val context: Context) {
@@ -18,12 +19,23 @@ class DeviceInfo(private val context: Context) {
     val versionCode: Long get() = packageInfo.longVersionCode
     val versionName: String get() = packageInfo.versionName.orEmpty()
 
-    /** The hardware serial. Build.getSerial() is allowed for the device owner of a fully managed device (SDK docs). */
+    private val isDeviceOwner: Boolean
+        get() = context.getSystemService(DevicePolicyManager::class.java).isDeviceOwnerApp(context.packageName)
+
+    /**
+     * The hardware serial. A device owner may read it with READ_PHONE_STATE (granted to itself in
+     * AgentService.grantOwnPermissions); null until that grant has happened.
+     */
     val serial: String?
         @SuppressLint("HardwareIds", "MissingPermission")
-        get() = runCatching {
-            if (context.getSystemService(DevicePolicyManager::class.java).isDeviceOwnerApp(context.packageName)) Build.getSerial() else null
-        }.getOrNull()?.takeIf { it != Build.UNKNOWN }
+        get() = runCatching { if (isDeviceOwner) Build.getSerial() else null }
+            .getOrNull()?.takeIf { it.isNotBlank() && it != Build.UNKNOWN }
+
+    /** The IMEI of the first SIM slot, under the same rule as [serial]; null on phones without a modem. */
+    val imei: String?
+        @SuppressLint("HardwareIds", "MissingPermission")
+        get() = runCatching { if (isDeviceOwner) context.getSystemService(TelephonyManager::class.java)?.getImei(0) else null }
+            .getOrNull()?.takeIf { it.isNotBlank() }
 
     val batteryPercent: Int
         get() = context.getSystemService(BatteryManager::class.java).getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)

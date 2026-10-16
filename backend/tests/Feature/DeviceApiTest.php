@@ -2,12 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Mdm\Models\Clerk;
 use App\Mdm\Models\Command;
 use App\Mdm\Models\Device;
 use App\Mdm\Models\DeviceGroup;
 use App\Mdm\Models\Policy;
 use App\Mdm\Services\CommandService;
 use App\Mdm\Services\EnrollmentService;
+use App\Mdm\Services\HandoverService;
 use App\Mdm\Services\PolicyBuilder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
@@ -106,6 +108,26 @@ class DeviceApiTest extends TestCase
 
         $this->withToken($token)->postJson('/api/device/v1/checkin', ['applied_policy_version' => $response->json('policy.version')]);
         $this->assertSame(app(PolicyBuilder::class)->build($device->fresh())['version'], $device->fresh()->applied_policy_version);
+    }
+
+    public function test_checkin_fills_in_serial_and_imei_and_returns_the_current_holder(): void
+    {
+        $token = $this->enroll($this->code(), serial: '')->json('device_token');
+        $device = Device::sole();
+        $this->assertNull($device->serial);
+
+        $this->withToken($token)->postJson('/api/device/v1/checkin', ['serial' => 'RK12345', 'imei' => '356938035643809'])
+            ->assertOk()->assertJson(['asset_tag' => 'NP-0001', 'holder' => null]);
+        $this->assertSame('RK12345', $device->fresh()->serial);
+        $this->assertSame('356938035643809', $device->fresh()->imei);
+
+        app(HandoverService::class)->handOver($device, Clerk::create(['staff_number' => 'S-1', 'name' => 'Jane Wanjiku', 'active' => true]));
+        $this->withToken($token)->postJson('/api/device/v1/checkin', [])->assertJson(['holder' => 'Jane Wanjiku']);
+
+        // A serial already recorded on another phone is ignored instead of failing the check-in.
+        Device::create(['asset_tag' => 'NP-0002', 'serial' => 'TAKEN', 'state' => Device::STATE_ENROLLED]);
+        $this->withToken($token)->postJson('/api/device/v1/checkin', ['serial' => 'TAKEN'])->assertOk();
+        $this->assertSame('RK12345', $device->fresh()->serial);
     }
 
     public function test_command_lifecycle_queued_delivered_succeeded(): void

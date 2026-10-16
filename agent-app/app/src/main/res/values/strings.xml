@@ -9,7 +9,7 @@
          with \n so that collapsed space lands, invisibly, at the end of the previous line. -->
     <string name="notice_body">This is a company phone. It belongs to Noahport and is managed by Noahport IT using this app.
         \n\n<b>What Noahport can see</b>
-        \n• Phone details: model, Android version, security updates
+        \n• Phone details: model, serial number and IMEI, Android version, security updates
         \n• Which apps are installed
         \n• How much mobile data and Wi-Fi each app uses, including data shared through the hotspot
         \n• Battery level and whether the phone is charging
@@ -34,7 +34,7 @@
     <string name="handover_lock_footer">%1$s · Unlocks automatically once the handover is recorded. Hold the power button for emergency calls.</string>
     <string name="notice_acknowledge">I understand</string>
     <string name="notice_acknowledged">Acknowledged on %1$s</string>
-    <string name="notice_device_info">Asset tag: %1$s\nIssued to: %2$s\nManaged by Noahport: %3$s\nAgent version: %4$s\nLast sync with Noahport: %5$s</string>
+    <string name="notice_device_info">Asset tag: %1$s\nCurrent holder: %2$s\nManaged by Noahport: %3$s\nAgent version: %4$s\nLast sync with Noahport: %5$s</string>
     <string name="notice_not_synced">not yet</string>
     <string name="notice_not_set">not set</string>
     <string name="notice_yes">yes</string>

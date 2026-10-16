@@ -6,8 +6,10 @@ use App\Filament\Resources\Devices\Pages\CreateDevice;
 use App\Filament\Resources\Devices\Pages\EditDevice;
 use App\Filament\Resources\Devices\Pages\ListDevices;
 use App\Filament\Resources\Devices\Pages\ViewDevice;
+use App\Filament\Resources\Devices\RelationManagers\AppsRelationManager;
 use App\Filament\Resources\Devices\RelationManagers\AssignmentsRelationManager;
 use App\Filament\Resources\Devices\RelationManagers\CommandsRelationManager;
+use App\Filament\Resources\Devices\RelationManagers\NetworkLogsRelationManager;
 use App\Mdm\Models\Device;
 use App\Mdm\Services\PolicyBuilder;
 use BackedEnum;
@@ -206,8 +208,10 @@ class DeviceResource extends Resource
     public static function getRelations(): array
     {
         return [
-            AssignmentsRelationManager::class,
+            AppsRelationManager::class,
+            NetworkLogsRelationManager::class,
             CommandsRelationManager::class,
+            AssignmentsRelationManager::class,
         ];
     }
 

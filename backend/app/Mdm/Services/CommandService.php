@@ -31,6 +31,28 @@ class CommandService
         return $command;
     }
 
+    /** Blocks or allows one app on this phone only, on top of its group's blocked apps. */
+    public function setAppBlocked(Device $device, string $package, bool $blocked): void
+    {
+        $overrides = $device->policy_overrides ?? [];
+        $add = array_values(array_diff($overrides['blocked_apps_add'] ?? [], [$package]));
+        $remove = array_values(array_diff($overrides['blocked_apps_remove'] ?? [], [$package]));
+        $groupBlocks = in_array($package, $device->group?->policy?->payload['blocked_apps'] ?? [], true);
+
+        if ($blocked && ! $groupBlocks) {
+            $add[] = $package;
+        } elseif (! $blocked && $groupBlocks) {
+            $remove[] = $package;
+        }
+        $overrides['blocked_apps_add'] = $add;
+        $overrides['blocked_apps_remove'] = $remove;
+        $overrides = array_filter($overrides, fn ($v) => $v !== []);
+        $device->update(['policy_overrides' => $overrides ?: null]);
+
+        AuditLog::record($blocked ? 'app.blocked' : 'app.allowed', $device, ['asset_tag' => $device->asset_tag, 'package' => $package]);
+        $this->push->wake($device);
+    }
+
     /** Sets (or clears, with null) a per-device policy override, e.g. hotspot => 'blocked'. */
     public function overridePolicy(Device $device, string $field, mixed $value): void
     {

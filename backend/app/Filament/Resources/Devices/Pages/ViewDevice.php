@@ -3,7 +3,11 @@
 namespace App\Filament\Resources\Devices\Pages;
 
 use App\Filament\Resources\Devices\DeviceResource;
+use App\Filament\Resources\Devices\Widgets\DeviceBatteryChart;
 use App\Filament\Resources\Devices\Widgets\DeviceLiveStatus;
+use App\Filament\Resources\Devices\Widgets\DeviceTopApps;
+use App\Filament\Resources\Devices\Widgets\DeviceTopSites;
+use App\Filament\Resources\Devices\Widgets\DeviceUsageChart;
 use App\Mdm\Models\Command;
 use App\Mdm\Models\Device;
 use App\Mdm\Services\CommandService;
@@ -56,6 +60,17 @@ class ViewDevice extends ViewRecord
     protected function getHeaderWidgets(): array
     {
         return [DeviceLiveStatus::class];
+    }
+
+    /** Data use, apps, websites and battery (Milestone B), below the tabs. */
+    protected function getFooterWidgets(): array
+    {
+        return [DeviceUsageChart::class, DeviceTopApps::class, DeviceTopSites::class, DeviceBatteryChart::class];
+    }
+
+    public function getFooterWidgetsColumns(): int|array
+    {
+        return ['default' => 1, 'xl' => 2];
     }
 
     private function commandAction(string $type, Heroicon $icon, bool $confirm): Action

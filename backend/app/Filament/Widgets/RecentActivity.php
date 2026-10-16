@@ -28,6 +28,16 @@ class RecentActivity extends TableWidget
         'policy.updated' => 'Group rules changed',
         'policy.override' => 'Phone rule changed',
         'device.updated' => 'Phone edited',
+        'device.enrolled' => 'Phone enrolled',
+        'app.blocked' => 'App blocked',
+        'app.allowed' => 'App allowed',
+        'command.succeeded' => 'Command done',
+        'command.failed' => 'Command failed',
+        'work_rule.created' => 'Work site added',
+        'work_rule.updated' => 'Work site changed',
+        'work_rule.deleted' => 'Work site removed',
+        'enrollment_code.created' => 'Enrollment code made',
+        'enrollment_code.disabled' => 'Enrollment code disabled',
     ];
 
     public static function canView(): bool

@@ -21,8 +21,14 @@ class PolicyBuilder
     public function build(Device $device): array
     {
         $policy = $device->group?->policy;
-        $effective = array_replace(self::DEFAULTS, $policy?->payload ?? [], $device->policy_overrides ?? []);
-        $effective['blocked_apps'] = array_values(array_unique($effective['blocked_apps']));
+        $overrides = $device->policy_overrides ?? [];
+        // Per-phone app exceptions adjust the group's list instead of replacing it, so later group changes still apply.
+        $add = $overrides['blocked_apps_add'] ?? [];
+        $remove = $overrides['blocked_apps_remove'] ?? [];
+        unset($overrides['blocked_apps_add'], $overrides['blocked_apps_remove']);
+
+        $effective = array_replace(self::DEFAULTS, $policy?->payload ?? [], $overrides);
+        $effective['blocked_apps'] = array_values(array_diff(array_unique(array_merge($effective['blocked_apps'], $add)), $remove));
 
         // Changes to either the group policy or the overrides must change the version the phone compares against.
         // Masked to 31 bits: it must fit Postgres `integer` (applied_policy_version) and the agent's Kotlin Int.

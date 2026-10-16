@@ -12,7 +12,7 @@ use Filament\Widgets\TableWidget;
 /** The latest audited actions: handovers, commands, rule changes. */
 class RecentActivity extends TableWidget
 {
-    protected static ?int $sort = 5;
+    protected static ?int $sort = 6;
 
     protected int|string|array $columnSpan = 'full';
 
@@ -38,6 +38,7 @@ class RecentActivity extends TableWidget
         'work_rule.deleted' => 'Work site removed',
         'enrollment_code.created' => 'Enrollment code made',
         'enrollment_code.disabled' => 'Enrollment code disabled',
+        'settings.peak_hours' => 'Peak hours changed',
     ];
 
     public static function canView(): bool

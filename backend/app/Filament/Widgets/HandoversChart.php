@@ -10,7 +10,7 @@ use Illuminate\Support\Collection;
 /** Daily handovers and commands over the last 14 days (admin's time zone). */
 class HandoversChart extends ChartWidget
 {
-    protected static ?int $sort = 3;
+    protected static ?int $sort = 4;
 
     protected ?string $heading = 'Activity, last 14 days';
 

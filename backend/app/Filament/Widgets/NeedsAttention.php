@@ -12,7 +12,7 @@ use Filament\Widgets\TableWidget;
 /** Phones with a problem and what the problem is (FleetHealth). Empty = all good. */
 class NeedsAttention extends TableWidget
 {
-    protected static ?int $sort = 2;
+    protected static ?int $sort = 3;
 
     protected int|string|array $columnSpan = 'full';
 

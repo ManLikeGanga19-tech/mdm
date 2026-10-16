@@ -12,7 +12,7 @@ use Filament\Widgets\TableWidget;
 /** Who has which phone right now. Shown to every role, including shift coordinators. */
 class HoldersNow extends TableWidget
 {
-    protected static ?int $sort = 4;
+    protected static ?int $sort = 5;
 
     protected static ?string $heading = 'Who has which phone';
 

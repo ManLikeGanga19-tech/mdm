@@ -14,7 +14,8 @@ that goes stale when ShuleHQ's deploy replaces the host file; reloading it silen
 |---|---|
 | Address | https://mdm.94-72-102-13.sslip.io (sslip.io; switch to a company subdomain later) |
 | Code + compose | `/opt/noahport-mdm` (git checkout of this repo), `deploy/docker-compose.prod.yml` |
-| Secrets (server only) | `/opt/noahport-mdm/deploy/.env` (DB password), `deploy/.env.production` (Laravel) |
+| Secrets (server only) | `/opt/noahport-mdm/deploy/.env` (DB password, Mercure hub keys), `deploy/.env.production` (Laravel) |
+| Real-time hub | Mercure inside the app container (`php-server --mercure`), public at `/.well-known/mercure` through the edge Caddy; keys `MERCURE_*` in `deploy/.env`, generated once by `deploy.sh` |
 | Site block / guard | `/opt/caddy-sites/mdm.caddy`, `/opt/caddy-sites/mdm-guard.sh`, systemd `mdm-edge-guard.{path,timer}` |
 | Network to the edge | `mdm-edge-net` (only `sms-caddy` and our app are on it) |
 | Firebase key | `/opt/noahport-mdm/deploy/secrets/firebase-sa.json` (mode 600; mounted at `/run/secrets/mdm/`), enabled by `FCM_PROJECT_ID` + `FCM_CREDENTIALS_PATH` in `.env.production` |
@@ -36,6 +37,18 @@ docker compose -f deploy/docker-compose.prod.yml exec app php artisan mdm:create
 ## Every update
 ```bash
 /opt/noahport-mdm/deploy/deploy.sh
+```
+It pulls `main`, builds the image, restarts app/horizon/scheduler, runs migrations and caches. If a pull changes
+`deploy.sh` itself, bash may run a mix of old and new lines: run it a second time (harmless).
+
+Check after a deploy: `curl -s -o /dev/null -w '%{http_code}' https://mdm.94-72-102-13.sslip.io/up` → 200, and the
+hub without a token → 401 (`.../.well-known/mercure?match=x`).
+
+## Removing test phones
+`php artisan mdm:remove-devices <asset tag>...` lists each phone and everything recorded about it, and deletes only
+with `--force` (audited). Accounts, roles, crews, roster, clerks and other phones are not touched.
+```bash
+cd /opt/noahport-mdm && docker compose -f deploy/docker-compose.prod.yml exec app php artisan mdm:remove-devices NP-TEST-02
 ```
 
 ## Restore a backup

@@ -39,5 +39,8 @@ Run from the repo root (Docker; no local PHP):
 - Create an admin-site account: `docker compose exec app php artisan mdm:create-user <email> "<name>" --role=super_admin|manager|coordinator`
 - Queue worker: the `horizon` service (started by `up -d`)
 - Run tests: `docker compose exec app php artisan test` (Postgres database `mdm_test`)
-- Lint/format: `docker compose exec app vendor/bin/pint app tests database` (ktlint for the agent: not set up yet)
+- Lint/format: `docker compose exec app vendor/bin/pint app tests database config` (ktlint for the agent: not set up yet)
+- Agent release + enrollment tool: `cd agent-app && scripts/make-enroll-kit.sh` (Git Bash; release key required). Fleet phones get only this release build; `assembleDebug` is for the emulator/test bench
+- Remove test phones (dry run unless `--force`): `php artisan mdm:remove-devices <asset tag>...`
+- Production deploy: `ssh -i ~/.ssh/wifios_vps deploy@94.72.102.13 /opt/noahport-mdm/deploy/deploy.sh`
 - Never run `migrate:fresh` against the dev database casually: it deletes the admin accounts.

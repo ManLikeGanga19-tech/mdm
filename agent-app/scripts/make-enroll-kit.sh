@@ -20,6 +20,11 @@ meta=app/build/outputs/apk/release/output-metadata.json
 # Refuse an unsigned build: it can't be installed, and the tool must always carry the permanent key's signature.
 cert=$("$apksigner" verify --print-certs "$apk" | sed -n 's/.*certificate SHA-256 digest: //p' | head -1)
 [ -n "$cert" ] || { echo "Release APK is not signed. Is ~/.noahport-signing/release.properties present?" >&2; exit 1; }
+# Fleet phones only ever get the release agent: a debuggable build shows test controls and allows run-as.
+aapt="$(ls -d "$sdk"/build-tools/* | sort -V | tail -1)/aapt.exe"
+if "$aapt" dump xmltree "$apk" AndroidManifest.xml | grep -q 'android:debuggable'; then
+  echo "Refusing a debuggable APK: the enrollment kit must carry the release build." >&2; exit 1
+fi
 
 version=$(python -I -c "import json,sys; e=json.load(open(sys.argv[1]))['elements'][0]; print(e['versionName'])" "$meta")
 numeric=$(echo "$version" | grep -oE '^[0-9]+(\.[0-9]+){0,3}')

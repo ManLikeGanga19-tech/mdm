@@ -113,6 +113,66 @@ class CrewHandoverTest extends TestCase
         $this->assertDatabaseHas('mdm_audit_log', ['action' => 'crew_handover.accepted']);
     }
 
+    public function test_the_night_crew_hands_over_to_the_morning_crew_across_midnight(): void
+    {
+        $service = app(CrewHandoverService::class);
+        // 06:15 Wednesday: the night shift began Tuesday 22:30 (Crew 3); mornings (Crew 1) start 06:30.
+        $this->travelTo($this->eat('2026-10-21 06:15'));
+        $context = $service->context();
+
+        $this->assertStringContainsString('A', $context['shift']->name);
+        $this->assertSame('2026-10-21', $context['date']);
+        $this->assertSame('Crew 3', $context['outgoing']->name);
+        $this->assertSame('Crew 1', $context['incoming']->name);
+
+        $handover = $service->handOver($this->coordinators['3a'], $context['shift'], $context['date'], [$this->phone1->id => null]);
+        $service->accept($this->coordinators['1a'], $handover->fresh(['items']), [$this->phone1->id => ['received' => true]]);
+        $this->travelTo($this->eat('2026-10-21 07:30'));
+        $this->assertFalse(app(HandoverEnforcement::class)->isLocked($this->phone1->fresh()));
+        $this->assertTrue(app(HandoverEnforcement::class)->isLocked($this->phone2->fresh()), 'not handed over: locked');
+        $this->assertSame('on time', $service->status($context['shift'], $context['date'], $handover->fresh()));
+    }
+
+    public function test_the_night_crew_sees_its_shift_after_midnight(): void
+    {
+        $this->travelTo($this->eat('2026-10-21 02:00'));
+
+        $slot = app(RosterService::class)->slotFor($this->crews[3]);
+
+        $this->assertTrue($slot['on_duty']);
+        $this->assertSame('2026-10-20', $slot['date'], 'the night shift belongs to the evening it started');
+    }
+
+    public function test_a_super_admin_without_a_crew_can_act_for_both_sides(): void
+    {
+        $this->travelTo($this->eat('2026-10-20 14:20'));
+        $this->actingAs(User::factory()->create(['role' => Role::SuperAdmin]));
+
+        Livewire::test(ShiftHandover::class)
+            ->assertSee('Shift overview')
+            ->assertActionVisible('handOverPhones')
+            ->callAction('handOverPhones')
+            ->assertHasNoActionErrors();
+
+        $this->assertSame(2, CrewHandover::sole()->items()->count(), 'all shift phones pre-ticked');
+    }
+
+    public function test_a_coordinator_gives_phones_only_to_their_own_crews_clerks(): void
+    {
+        $mine = Clerk::create(['staff_number' => '2001', 'name' => 'Grace Achieng', 'crew_id' => $this->crews[2]->id]);
+        $other = Clerk::create(['staff_number' => '3001', 'name' => 'Other Crew Clerk', 'crew_id' => $this->crews[3]->id]);
+        $this->actingAs($this->coordinators['2a']);
+
+        Livewire::test(ShiftHandover::class)
+            ->callTableAction('handOver', $this->phone1, ['clerk_id' => $mine->id])
+            ->assertHasNoTableActionErrors();
+        $this->assertSame($mine->id, $this->phone1->fresh()->currentAssignment->clerk_id);
+
+        Livewire::test(ShiftHandover::class)
+            ->callTableAction('handOver', $this->phone2, ['clerk_id' => $other->id])
+            ->assertHasTableActionErrors(['clerk_id']);
+    }
+
     public function test_a_handover_nobody_made_is_missing_after_the_window(): void
     {
         $this->travelTo($this->eat('2026-10-20 15:10'));

@@ -2,15 +2,27 @@
 
 Read this, `CLAUDE.md`, and `docs/ARCHITECTURE.md` before starting work. Update it at the end of every session.
 
-_Last updated: 2026-10-16_
+_Last updated: 2026-10-16 (v1.0.0)_
 
-## Current phase
-**Phase 2, Milestone A (approved 2026-10-15)** — pilot-ready core: server + admin site, device API, agent check-in/policy/commands, enrollment-tool update, VPS deploy. Step 1 done: admin site running locally in Docker (Filament 5 / Laravel 13) with roles, phones, shift handover, clerks (CSV import), groups & rules, accounts, audit log; 16 feature tests pass. **Deployed to the VPS 2026-10-16: https://mdm.94-72-102-13.sslip.io/admin** (see `deploy/README.md`). Dashboard has KPIs + needs-attention + activity. Milestone A end-to-end works on production (2026-10-16): enrollment codes (admin site), device API (enroll / check-in / command results), agent 0.3.2 (enroll, 15-min check-ins with battery + network, PolicyEnforcer for hotspot / blocked apps / network logging, lock / restart / reset screen lock / erase), NoahportEnroll-0.3.2.exe asks for and verifies the code. Verified: test phone NP-TEST-02 and emulator NP-DEMO-EMU enrolled; a Lock from the server ran on the real phone; a hotspot override round-trip on the emulator. **Firebase push is live (2026-10-16): a Lock clicked on the site completed on the real test phone in 3 s** (push sent in 0.3 s). Milestone A is functionally complete; open items: 24 h soak on a RugKing, staff device-use policy. Then Milestone B (approved 2026-10-16; per-site data as an estimate is OK): live traffic/speed view, per-app + per-site data with Work/Not-work, peak/off-peak shift report, battery history.
+## Current state (v1.0.0, 2026-10-16)
+**Production-ready; rollout to the remaining RugKings starts 2026-10-17.** Live at
+https://mdm.94-72-102-13.sslip.io/admin. Agent and NoahportEnroll **1.0.0** (release build, permanent key); 91
+feature tests pass. In the field: one RugKing (agent 0.11.0, updated to 1.0.0 by plugging it into the tool) and the
+Neon test phone NP-TEST-02 (1.0.0; to be removed before the rollout with `mdm:remove-devices`).
 
-Phase 1 (spike) summary: **Phase 1 — Device spike.** Plan approved 2026-10-15. Spike app passes all checks possible on an Android 15
-emulator (device owner, all-app usage stats, network logging, app suspend/hide, lock, reboot). 2026-10-15: the same checks plus
-hotspot block **pass on a real phone** (Safaricom Neon Smarta 2 K, Android 14). **QR provisioning is blocked by Play Protect**
-(DPC allowlist, see spike report); enrollment goes by USB for now. Next: tethering check, then a RugKing. Procedure, QR steps and results: `docs/spike-report.md`. Step-by-step guide for testing on a company phone: `docs/TESTING-AT-WORK.md`.
+Working end to end: USB enrollment from any Windows laptop (adb fetched automatically; battery allowlist; updates
+enrolled phones), real-time control (Mercure + FCM, ~1 s; confirmed on the RugKing and the Neon), policies (hotspot,
+blocked apps, network logging), commands, handover lock, telemetry (usage, websites, apps, battery), live view + live
+console (app figures ~10 s old, confirmed), shift report, editable roles/permissions + accounts, crews on a weekly
+roster with coordinator-to-coordinator handover and the My shift page, "not allowed" page.
+
+Before the rollout (with the user): remove the Neon test record (`mdm:remove-devices NP-TEST-02`, dry run first;
+keep accounts, roles, crews, roster, clerks and the RugKing), invite the coordinators, create Crew 1–3, set clerks'
+crews, generate the roster. Not yet tested in the field: a full crew handover at a real shift change (covered by
+tests incl. the night → morning one across midnight).
+
+Next after rollout: Zoho SMTP (invite/reset/alert emails), agent self-update, alert rules, 24 h soak report on a
+RugKing, Play Protect allowlist (D-U-N-S) for QR enrollment.
 
 ## Decisions made
 | Topic | Decision |
@@ -55,19 +67,18 @@ http://localhost:8080/admin (or http://<PC LAN IP>:8080/admin from a phone on th
 
 ## Emulators
 - `Pixel_9` (user's, Android 15): left as found (spike app removed).
-- `Noahport_Spike` (Android 15, Google Play image): currently set up for the management demo (debug agent as device owner); start it WITHOUT `-wipe-data` until the demo is done. Start with
-  `emulator -avd Noahport_Spike`; wipe with `-wipe-data` if `set-device-owner` complains about accounts.
+- `Noahport_Spike` (Android 15, Google Play image): enrolled (release agent 0.10.0, NP-RT-01) to a local dev server
+  through a Cloudflare tunnel that no longer exists: **wipe before reuse** (`emulator -avd Noahport_Spike -wipe-data
+  -dns-server 8.8.8.8`, then `adb shell settings put global captive_portal_mode 0`). Cloudflare quick tunnels buffer
+  server-sent events, so real-time tests need production or a direct https server.
 
 ## Waiting on the user
-- [ ] Run the spike on a RugKing (USB enrollment, hotspot, 24 h soak)
-- [ ] Back up the release key (no USB drive): `release.jks` to OneDrive **Personal Vault** + a second cloud copy, and the password separately (password manager / paper). Losing it means re-enrolling every phone
-- [ ] Check whether Noahport has a D-U-N-S number (needed for the Android Developer Console / allowlist appeal)
-- [ ] Share `NoahportEnroll-<version>.exe` from OneDrive and try it on the **company laptop** (SmartScreen / antivirus may block an unsigned exe)
-- [ ] Apply for a free D-U-N-S number for Noahport (Noahport has none; up to 30 days). Then Android Developer Console org account, then the Play Protect appeal (draft: `docs/play-protect-appeal.md`)
-- [ ] Staff spreadsheet (CSV: staff number, name) to import the clerks
-- [ ] VPS SSH access + a check of what already runs there (reverse proxy, free RAM/disk)
-- [ ] Asset tags of the 6 RugKings
-- [ ] Exact RugKing model(s) for the report
+- [ ] Back up the release key: `release.jks` to OneDrive **Personal Vault** + a second cloud copy, password stored separately. Losing it means re-enrolling every phone
+- [ ] Zoho SMTP details (host, port, mailbox, app password) so invites, resets and alerts are emailed
+- [ ] Rollout setup on the admin site: invite 6 coordinators, Crews 1–3, clerks' crews (or CSV with a `crew` column), Generate rotation
+- [ ] Asset tags of the remaining RugKings (the tool suggests the next tag)
+- [ ] Signed staff device-use policy (Kenya Data Protection Act) before phones go to clerks
+- [ ] D-U-N-S number for Noahport, then the Play Protect allowlist appeal (draft `docs/play-protect-appeal.md`) to allow QR enrollment
 - [ ] Company subdomain later (no DNS access now; sslip.io meanwhile)
 
 ## Local environment (Windows PC)
@@ -98,3 +109,4 @@ http://localhost:8080/admin (or http://<PC LAN IP>:8080/admin from a phone on th
 - 2026-10-16 (Live console, agent 0.11.0): the live view was only a speed chart; website names can't be live (Android hands network logs over in batches: ~1,200 events or ~90 min). Added a terminal-style **Live console** under it (DeviceLiveConsole, polls 2 s): LIVE lines (speed, network, signal, top apps by speed from NetworkStatsManager deltas over a fixed window, with "apps Ns ago" because Android refreshes per-app counters on its own schedule), PHONE lines (every agent log line via LiveFeed + charger/battery/network/real-time-channel events), ADMIN lines (every audit-logged action on the phone + wake-up timing). Cache only (15 min), no schema change. Widgets load lazily, so a plain GET of the page doesn't contain the console (test uses assertSeeLivewire). NoahportEnroll-0.11.0.exe; the Neon updated to 0.11.0 here. User confirmed real-time actions work on the RugKing and Neon (0.10.0).
 - 2026-10-16 (RBAC, approved): editable roles. Tables `mdm_roles` (key for built-ins) + `mdm_role_permissions`; `users.role` -> `users.role_id` + `disabled_at`, `last_login_at`, `invited_at` (migration `2026_10_17_000100`, reversible; verified up/down/up on the dev DB, the super admin account kept its role). Permissions are an enum in code (`App\Mdm\Permission`, 15, grouped Phones/Shifts/Setup/Reports/Administration; erase, website log, accounts, roles marked sensitive); built-in roles seeded with exactly their old access (manager: fleet, reports, websites, audit; coordinator: handover). Every page/action now checks a permission (`$user->hasPermission()`); `User::role` setter still accepts `Role::X` (tests, `mdm:create-user`). Super admin role always has everything and can't be edited; built-in roles can't be deleted; the last active super admin can't be disabled/demoted/deleted (`AccountService`). Screens: **Roles & permissions** (`/admin/roles`, checkbox grid per group, audited diffs), **Accounts** (invite -> set-password link shown to copy, valid 48 h via Filament's reset page; new set-password link; disable/enable; role; status; last sign-in). "Forgot password?" says to ask a super admin while `MAIL_MAILER=log` (Zoho not connected). Coordinators land on Shift handover (panel `homeUrl`). 77 tests pass. **Deployed 2026-10-16** (migration ran in production). Next: Zoho SMTP details from the user so invites are emailed.
 - 2026-10-16 (Crews, roster, coordinator handover; 403 page): custom "not allowed" page (`resources/views/errors/403.blade.php`: name + role, ask a super admin, start-page link; disabled-account variant). Approved design: **3 crews rotating weekly** (mornings -> afternoons -> nights), 2 coordinators each. Migration `2026_10_17_000200` (reversible, verified down/up): `mdm_crews`, `users.crew_id`, `mdm_clerks.crew_id`, `mdm_roster` (date = shift start date EAT, unique date+shift), `mdm_crew_handovers` (+ items: per-phone note, received, receive note; status pending/accepted/disputed). `RosterService` (generate rotation: week w, shift i -> crew of shift i-w in week 0; swaps; previous/next crew; crew's current/next slot), `CrewHandoverService` (context = next shift from 30 min before it, else current shift; outgoing coordinator hands over all shift phones pre-ticked with notes, redo while pending; incoming accepts per phone; database notifications to the other crew; received phones wake + leave the handover lock; status on time/late/pending/disputed/missing). `HandoverEnforcement`: a phone received in the window's crew handover counts as handed over (clerk assignment still counts too). **My shift** page (same URL `/admin/shift-handover`, coordinators' start page): your crew + shift (on duty / next), co-coordinator, handover card with Hand over / Accept, crew clerks with their phone, next crew, phones table with "Give to clerk" limited to the crew's clerks. Admin: **Crews** (2 coordinators each, picked from accounts with the handover permission), **Roster** (grouped by day, Generate rotation, Change crew; coordinators can read it), new permission `roster.manage`, clerk crew field + CSV `crew` column (by name), dashboard **Crew handovers** widget. 85 tests pass. **Deployed 2026-10-16.** Production setup still to do by the user: create Crew 1–3 with their coordinators, set clerks' crews (or re-import the CSV with a crew column), Generate rotation.
+- 2026-10-16 (v1.0.0, rollout prep): user confirmed real-time actions on both phones and the live console (apps ~10 s old). More tests: night → morning crew handover across midnight, night crew's slot after midnight, super admin acting for both sides, clerk picker limited to the crew, `mdm:remove-devices` (dry run by default, `--force` deletes the phone with its cascaded history, audited). Debug vs release verified: kit APK and the Neon's agent are not debuggable; `make-enroll-kit.sh` now refuses a debuggable APK. Agent/NoahportEnroll **1.0.0** built (same permanent cert), Neon upgraded 0.11.0 -> 1.0.0 with the tool (still device owner, allowlisted, service back ~3 s after the update). Old 0.x tools moved to `OneDrive/Noahport/enroll-kit/superseded/`. Lint: 5 known warnings (SDK 37 / WorkManager 2.12 available, dataExtractionRules, debug-screen text), deliberately not changed before the rollout. README written; ARCHITECTURE (real-time channel, live view, crews/roster/handover, roles, endpoints, env, status), deploy/README (hub, re-run note, removing test phones) and this file curated. Release: tag `v1.0.0` as a full GitHub release (exe + APK + SHA-256) and remove the temporary `spike-apk` pre-release; needs the GitHub CLI logged in on this PC (`winget install GitHub.cli`, `gh auth login`).

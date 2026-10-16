@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Filament\Resources\AuditLogs\AuditLogResource;
 use App\Mdm\Models\AuditLog;
+use App\Mdm\Permission;
 use Filament\Actions\Action;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -47,7 +48,7 @@ class RecentActivity extends TableWidget
 
     public static function canView(): bool
     {
-        return auth()->user()?->canViewFleet() ?? false;
+        return auth()->user()?->hasPermission(Permission::FleetView) ?? false;
     }
 
     public function table(Table $table): Table

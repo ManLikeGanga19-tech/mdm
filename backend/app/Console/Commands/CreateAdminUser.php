@@ -29,7 +29,7 @@ class CreateAdminUser extends Command
             ['name' => $this->argument('name'), 'role' => $role, 'password' => $password],
         );
 
-        $this->info("{$role->label()} account ready: {$user->email}");
+        $this->info("{$role->name()} account ready: {$user->email}");
         $this->line("Password (shown once, change it after signing in): {$password}");
 
         return self::SUCCESS;

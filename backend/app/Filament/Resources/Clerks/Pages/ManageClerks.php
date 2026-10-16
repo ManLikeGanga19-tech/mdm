@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Clerks\Pages;
 
 use App\Filament\Imports\ClerkImporter;
 use App\Filament\Resources\Clerks\ClerkResource;
+use App\Mdm\Permission;
 use Filament\Actions\CreateAction;
 use Filament\Actions\ImportAction;
 use Filament\Resources\Pages\ManageRecords;
@@ -14,7 +15,7 @@ class ManageClerks extends ManageRecords
 
     protected function getHeaderActions(): array
     {
-        $superAdmin = fn () => auth()->user()->isSuperAdmin();
+        $superAdmin = fn () => auth()->user()->hasPermission(Permission::ClerksManage);
 
         return [
             ImportAction::make()

@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Mdm\Models\Command;
 use App\Mdm\Models\DeviceAssignment;
+use App\Mdm\Permission;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Collection;
 
@@ -20,7 +21,7 @@ class HandoversChart extends ChartWidget
 
     public static function canView(): bool
     {
-        return auth()->user()?->canViewFleet() ?? false;
+        return auth()->user()?->hasPermission(Permission::FleetView) ?? false;
     }
 
     protected function getData(): array

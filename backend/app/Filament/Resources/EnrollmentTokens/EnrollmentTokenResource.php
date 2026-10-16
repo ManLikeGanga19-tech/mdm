@@ -5,6 +5,7 @@ namespace App\Filament\Resources\EnrollmentTokens;
 use App\Filament\Resources\EnrollmentTokens\Pages\ManageEnrollmentTokens;
 use App\Mdm\Models\AuditLog;
 use App\Mdm\Models\EnrollmentToken;
+use App\Mdm\Permission;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Resources\Resource;
@@ -27,7 +28,7 @@ class EnrollmentTokenResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->isSuperAdmin() ?? false;
+        return auth()->user()?->hasPermission(Permission::EnrollmentManage) ?? false;
     }
 
     public static function status(EnrollmentToken $token): string

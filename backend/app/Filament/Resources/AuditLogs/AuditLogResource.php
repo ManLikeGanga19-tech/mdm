@@ -4,6 +4,7 @@ namespace App\Filament\Resources\AuditLogs;
 
 use App\Filament\Resources\AuditLogs\Pages\ManageAuditLogs;
 use App\Mdm\Models\AuditLog;
+use App\Mdm\Permission;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
@@ -26,7 +27,7 @@ class AuditLogResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->canViewFleet() ?? false;
+        return auth()->user()?->hasPermission(Permission::AuditView) ?? false;
     }
 
     public static function canCreate(): bool

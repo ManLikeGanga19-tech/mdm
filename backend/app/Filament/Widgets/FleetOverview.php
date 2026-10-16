@@ -5,6 +5,7 @@ namespace App\Filament\Widgets;
 use App\Mdm\Models\Command;
 use App\Mdm\Models\Device;
 use App\Mdm\Models\DeviceAssignment;
+use App\Mdm\Permission;
 use App\Mdm\Services\FleetHealth;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -21,7 +22,7 @@ class FleetOverview extends StatsOverviewWidget
 
     public static function canView(): bool
     {
-        return auth()->user()?->canViewFleet() ?? false;
+        return auth()->user()?->hasPermission(Permission::FleetView) ?? false;
     }
 
     protected function getColumns(): int

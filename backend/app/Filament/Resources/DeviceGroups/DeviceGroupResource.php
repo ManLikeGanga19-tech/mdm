@@ -4,6 +4,7 @@ namespace App\Filament\Resources\DeviceGroups;
 
 use App\Filament\Resources\DeviceGroups\Pages\ManageDeviceGroups;
 use App\Mdm\Models\DeviceGroup;
+use App\Mdm\Permission;
 use BackedEnum;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Radio;
@@ -35,17 +36,17 @@ class DeviceGroupResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->canViewFleet() ?? false;
+        return auth()->user()?->hasPermission(Permission::FleetView) ?? false;
     }
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->isSuperAdmin() ?? false;
+        return auth()->user()?->hasPermission(Permission::SetupManage) ?? false;
     }
 
     public static function canEdit(Model $record): bool
     {
-        return auth()->user()?->isSuperAdmin() ?? false;
+        return auth()->user()?->hasPermission(Permission::SetupManage) ?? false;
     }
 
     public static function canDelete(Model $record): bool

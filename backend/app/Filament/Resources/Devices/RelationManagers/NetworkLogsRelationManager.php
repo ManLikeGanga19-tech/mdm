@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Devices\RelationManagers;
 
 use App\Mdm\Models\NetworkLog;
+use App\Mdm\Permission;
 use App\Mdm\Services\BackgroundTraffic;
 use App\Mdm\Services\UsageReport;
 use App\Mdm\Services\WorkClassifier;
@@ -13,6 +14,7 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Every website/service lookup the phone made, newest first, with the app and work classification. Phone housekeeping
@@ -25,6 +27,12 @@ class NetworkLogsRelationManager extends RelationManager
     protected static ?string $title = 'Website log';
 
     public bool $showBackground = false;
+
+    /** Websites visited are the most private data here: their own permission. */
+    public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
+    {
+        return auth()->user()?->hasPermission(Permission::WebsitesView) ?? false;
+    }
 
     public function isReadOnly(): bool
     {

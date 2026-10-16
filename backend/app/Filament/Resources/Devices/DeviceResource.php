@@ -11,6 +11,7 @@ use App\Filament\Resources\Devices\RelationManagers\AssignmentsRelationManager;
 use App\Filament\Resources\Devices\RelationManagers\CommandsRelationManager;
 use App\Filament\Resources\Devices\RelationManagers\NetworkLogsRelationManager;
 use App\Mdm\Models\Device;
+use App\Mdm\Permission;
 use App\Mdm\Services\PolicyBuilder;
 use BackedEnum;
 use Filament\Actions\ViewAction;
@@ -40,17 +41,17 @@ class DeviceResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->canViewFleet() ?? false;
+        return auth()->user()?->hasPermission(Permission::FleetView) ?? false;
     }
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->isSuperAdmin() ?? false;
+        return auth()->user()?->hasPermission(Permission::PhonesControl) ?? false;
     }
 
     public static function canEdit(Model $record): bool
     {
-        return auth()->user()?->isSuperAdmin() ?? false;
+        return auth()->user()?->hasPermission(Permission::PhonesControl) ?? false;
     }
 
     public static function canDelete(Model $record): bool

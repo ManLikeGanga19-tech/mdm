@@ -12,6 +12,7 @@ use App\Filament\Resources\Devices\Widgets\DeviceTopSites;
 use App\Filament\Resources\Devices\Widgets\DeviceUsageChart;
 use App\Mdm\Models\Command;
 use App\Mdm\Models\Device;
+use App\Mdm\Permission;
 use App\Mdm\Services\CommandService;
 use App\Mdm\Services\HandoverEnforcement;
 use App\Mdm\Services\LiveView;
@@ -23,20 +24,20 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Support\Icons\Heroicon;
 
-/** One phone: who holds it, its rules and details, and (super admins only) the controls. */
+/** One phone: who holds it, its rules and details, and the controls each role's permissions allow. */
 class ViewDevice extends ViewRecord
 {
     protected static string $resource = DeviceResource::class;
 
     protected function getHeaderActions(): array
     {
-        $superAdmin = fn () => auth()->user()->isSuperAdmin();
+        $can = fn (Permission $p) => fn () => auth()->user()->hasPermission($p);
 
         return [
             Action::make('hotspot')
                 ->label('Hotspot')
                 ->icon(Heroicon::OutlinedWifi)
-                ->visible($superAdmin)
+                ->visible($can(Permission::PhonesRules))
                 ->fillForm(fn (Device $record) => ['hotspot' => $record->policy_overrides['hotspot'] ?? 'group'])
                 ->schema([
                     Radio::make('hotspot')
@@ -55,7 +56,7 @@ class ViewDevice extends ViewRecord
                 ->label('Release handover lock')
                 ->icon(Heroicon::OutlinedLockOpen)
                 ->color('warning')
-                ->visible(fn (Device $record) => auth()->user()->isSuperAdmin() && app(HandoverEnforcement::class)->isLocked($record))
+                ->visible(fn (Device $record) => auth()->user()->hasPermission(Permission::HandoverRelease) && app(HandoverEnforcement::class)->isLocked($record))
                 ->requiresConfirmation()
                 ->modalDescription('The phone unlocks now and stays usable until the next handover window closes. Prefer recording the handover on the Shift handover page; this is recorded in the audit log.')
                 ->action(function (Device $record) {
@@ -66,7 +67,7 @@ class ViewDevice extends ViewRecord
                 ->label('Live view')
                 ->icon(Heroicon::OutlinedSignal)
                 ->color('success')
-                ->visible(fn (Device $record) => auth()->user()->isSuperAdmin() && ! app(LiveView::class)->isActive($record))
+                ->visible(fn (Device $record) => auth()->user()->hasPermission(Permission::LiveView) && ! app(LiveView::class)->isActive($record))
                 ->action(function (Device $record) {
                     app(LiveView::class)->start($record);
                     Notification::make()->title('Live view started')->body('The phone starts sending within a few seconds and shows a notice while you watch.')->success()->send();
@@ -75,14 +76,14 @@ class ViewDevice extends ViewRecord
                 ->label('Stop live view')
                 ->icon(Heroicon::OutlinedStop)
                 ->color('gray')
-                ->visible(fn (Device $record) => auth()->user()->isSuperAdmin() && app(LiveView::class)->isActive($record))
+                ->visible(fn (Device $record) => auth()->user()->hasPermission(Permission::LiveView) && app(LiveView::class)->isActive($record))
                 ->action(fn (Device $record) => app(LiveView::class)->stop($record)),
             $this->commandAction('lock', Heroicon::OutlinedLockClosed, confirm: false),
             ActionGroup::make([
                 $this->commandAction('reboot', Heroicon::OutlinedArrowPath, confirm: true),
                 $this->commandAction('reset_password', Heroicon::OutlinedKey, confirm: true),
                 $this->commandAction('wipe', Heroicon::OutlinedTrash, confirm: true)->color('danger'),
-            ])->visible($superAdmin)->label('More')->button()->color('gray'),
+            ])->visible(fn () => auth()->user()->hasPermission(Permission::PhonesControl) || auth()->user()->hasPermission(Permission::PhonesErase))->label('More')->button()->color('gray'),
             EditAction::make()->color('gray'),
         ];
     }
@@ -114,7 +115,7 @@ class ViewDevice extends ViewRecord
         return Action::make($type)
             ->label(Command::TYPES[$type])
             ->icon($icon)
-            ->visible(fn () => auth()->user()->isSuperAdmin())
+            ->visible(fn () => auth()->user()->hasPermission($type === 'wipe' ? Permission::PhonesErase : Permission::PhonesControl))
             ->requiresConfirmation($confirm)
             ->modalDescription($descriptions[$type] ?? null)
             ->action(function (Device $record) use ($type) {

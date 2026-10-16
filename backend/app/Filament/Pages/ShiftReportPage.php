@@ -6,6 +6,7 @@ use App\Filament\Pages\ShiftReport\ShiftHandoverTable;
 use App\Filament\Pages\ShiftReport\ShiftSummary;
 use App\Filament\Pages\ShiftReport\ShiftUsageTable;
 use App\Mdm\Models\Shift;
+use App\Mdm\Permission;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -38,7 +39,7 @@ class ShiftReportPage extends Page
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->canViewFleet() ?? false;
+        return auth()->user()?->hasPermission(Permission::ReportsView) ?? false;
     }
 
     public function mount(): void

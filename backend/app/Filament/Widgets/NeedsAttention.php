@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Filament\Resources\Devices\DeviceResource;
 use App\Mdm\Models\Device;
+use App\Mdm\Permission;
 use App\Mdm\Services\FleetHealth;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -20,7 +21,7 @@ class NeedsAttention extends TableWidget
 
     public static function canView(): bool
     {
-        return auth()->user()?->canViewFleet() ?? false;
+        return auth()->user()?->hasPermission(Permission::FleetView) ?? false;
     }
 
     public function table(Table $table): Table

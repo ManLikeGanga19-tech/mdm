@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Mdm\Models\Clerk;
 use App\Mdm\Models\Device;
+use App\Mdm\Permission;
 use App\Mdm\Services\HandoverService;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -35,7 +36,7 @@ class ShiftHandover extends Page implements HasTable
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->canRecordHandovers() ?? false;
+        return auth()->user()?->hasPermission(Permission::HandoverRecord) ?? false;
     }
 
     public function table(Table $table): Table

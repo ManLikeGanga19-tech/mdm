@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Shifts;
 
 use App\Filament\Resources\Shifts\Pages\ManageShifts;
 use App\Mdm\Models\Shift;
+use App\Mdm\Permission;
 use BackedEnum;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\TextInput;
@@ -30,17 +31,17 @@ class ShiftResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->canViewFleet() ?? false;
+        return auth()->user()?->hasPermission(Permission::FleetView) ?? false;
     }
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->isSuperAdmin() ?? false;
+        return auth()->user()?->hasPermission(Permission::SetupManage) ?? false;
     }
 
     public static function canEdit(Model $record): bool
     {
-        return auth()->user()?->isSuperAdmin() ?? false;
+        return auth()->user()?->hasPermission(Permission::SetupManage) ?? false;
     }
 
     public static function canDelete(Model $record): bool

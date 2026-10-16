@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Devices\Widgets;
 
 use App\Mdm\Models\Device;
+use App\Mdm\Permission;
 use App\Mdm\Services\UsageReport;
 use Filament\Actions\Action;
 use Filament\Tables\Columns\TextColumn;
@@ -21,6 +22,11 @@ class DeviceTopSites extends TableWidget
     public bool $showBackground = false;
 
     protected int|string|array $columnSpan = 'full';
+
+    public static function canView(): bool
+    {
+        return auth()->user()?->hasPermission(Permission::WebsitesView) ?? false;
+    }
 
     public function table(Table $table): Table
     {

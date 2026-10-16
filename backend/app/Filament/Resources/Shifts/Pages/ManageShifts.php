@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Shifts\Pages;
 use App\Filament\Resources\Shifts\ShiftResource;
 use App\Mdm\Models\AuditLog;
 use App\Mdm\Models\Setting;
+use App\Mdm\Permission;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\Repeater;
@@ -31,7 +32,7 @@ class ManageShifts extends ManageRecords
                 ->label('Peak hours')
                 ->icon(Heroicon::OutlinedChartBar)
                 ->color('gray')
-                ->visible(fn () => auth()->user()->isSuperAdmin())
+                ->visible(fn () => auth()->user()->hasPermission(Permission::SetupManage))
                 ->fillForm(fn () => ['ranges' => collect(Setting::get('peak_hours'))->map(fn ($r) => ['from' => $r[0], 'to' => $r[1]])->all()])
                 ->schema([
                     Repeater::make('ranges')

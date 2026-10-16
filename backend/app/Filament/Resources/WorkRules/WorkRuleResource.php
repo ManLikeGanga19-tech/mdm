@@ -5,6 +5,7 @@ namespace App\Filament\Resources\WorkRules;
 use App\Filament\Resources\WorkRules\Pages\ManageWorkRules;
 use App\Mdm\Models\AuditLog;
 use App\Mdm\Models\WorkRule;
+use App\Mdm\Permission;
 use BackedEnum;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -33,22 +34,22 @@ class WorkRuleResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->canViewFleet() ?? false;
+        return auth()->user()?->hasPermission(Permission::FleetView) ?? false;
     }
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->isSuperAdmin() ?? false;
+        return auth()->user()?->hasPermission(Permission::SetupManage) ?? false;
     }
 
     public static function canEdit(Model $record): bool
     {
-        return auth()->user()?->isSuperAdmin() ?? false;
+        return auth()->user()?->hasPermission(Permission::SetupManage) ?? false;
     }
 
     public static function canDelete(Model $record): bool
     {
-        return auth()->user()?->isSuperAdmin() ?? false;
+        return auth()->user()?->hasPermission(Permission::SetupManage) ?? false;
     }
 
     public static function form(Schema $schema): Schema

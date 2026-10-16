@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Devices\RelationManagers;
 
 use App\Mdm\Models\AppInventory;
 use App\Mdm\Models\Device;
+use App\Mdm\Permission;
 use App\Mdm\Services\CommandService;
 use App\Mdm\Services\PolicyBuilder;
 use Filament\Actions\Action;
@@ -57,7 +58,7 @@ class AppsRelationManager extends RelationManager
                     ->color('danger')
                     ->requiresConfirmation()
                     ->modalDescription(fn (AppInventory $record) => "{$record->label} will be greyed out on {$device->asset_tag} within seconds.")
-                    ->visible(fn (AppInventory $record) => auth()->user()->isSuperAdmin()
+                    ->visible(fn (AppInventory $record) => auth()->user()->hasPermission(Permission::PhonesRules)
                         && $record->package_name !== 'com.noahport.mdm.agent'
                         && ! in_array($record->package_name, $blocked(), true))
                     ->action(function (AppInventory $record) use ($device) {
@@ -67,7 +68,7 @@ class AppsRelationManager extends RelationManager
                 Action::make('allow')
                     ->label('Allow')
                     ->color('success')
-                    ->visible(fn (AppInventory $record) => auth()->user()->isSuperAdmin() && in_array($record->package_name, $blocked(), true))
+                    ->visible(fn (AppInventory $record) => auth()->user()->hasPermission(Permission::PhonesRules) && in_array($record->package_name, $blocked(), true))
                     ->action(function (AppInventory $record) use ($device) {
                         app(CommandService::class)->setAppBlocked($device, $record->package_name, false);
                         Notification::make()->title("{$record->label} allowed on {$device->asset_tag}")->success()->send();

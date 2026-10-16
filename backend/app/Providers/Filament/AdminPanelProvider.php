@@ -2,6 +2,10 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Auth\RequestPasswordReset;
+use App\Filament\Pages\Dashboard;
+use App\Filament\Pages\ShiftHandover;
+use App\Mdm\Permission;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -27,7 +31,14 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            // Set-password links (invites, resets from Accounts) open Filament's reset page; "Forgot password?" asks
+            // for a super admin until mail is set up (App\Filament\Auth\RequestPasswordReset).
+            ->passwordReset(RequestPasswordReset::class)
             ->profile(isSimple: false) // lets every account change its own password
+            // Each role starts where its work is: coordinators on the shift handover, everyone else on the overview.
+            ->homeUrl(fn () => auth()->user()?->hasPermission(Permission::FleetView) || ! auth()->user()?->hasPermission(Permission::HandoverRecord)
+                ? Dashboard::getUrl()
+                : ShiftHandover::getUrl())
             ->brandName('Noahport MDM')
             ->favicon(asset('icons/icon-192.png'))
             // Company look: white with blue by default; users can switch to dark in the account menu.

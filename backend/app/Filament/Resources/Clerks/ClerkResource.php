@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Clerks;
 
 use App\Filament\Resources\Clerks\Pages\ManageClerks;
 use App\Mdm\Models\Clerk;
+use App\Mdm\Permission;
 use BackedEnum;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\TextInput;
@@ -34,12 +35,12 @@ class ClerkResource extends Resource
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->isSuperAdmin() ?? false;
+        return auth()->user()?->hasPermission(Permission::ClerksManage) ?? false;
     }
 
     public static function canEdit(Model $record): bool
     {
-        return auth()->user()?->isSuperAdmin() ?? false;
+        return auth()->user()?->hasPermission(Permission::ClerksManage) ?? false;
     }
 
     public static function canDelete(Model $record): bool

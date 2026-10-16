@@ -5,7 +5,7 @@ clerks across three shifts. Our own Device Policy Controller app (the **agent**)
 Laravel admin site controls and monitors them. It does not use Google's Android Management API, whose usage policy
 forbids in-house-only solutions.
 
-**Production:** https://mdm.94-72-102-13.sslip.io/admin · **Current release:** v1.0.0 (agent + enrollment tool)
+**Production:** https://mdm.94-72-102-13.sslip.io/admin · **Current release:** v1.0.1 (agent + enrollment tool)
 
 ## What it does
 

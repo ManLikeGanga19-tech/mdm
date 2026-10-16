@@ -281,8 +281,9 @@ static class Program
 
     /// <summary>
     /// Asks for the asset tag, suggesting the one after the last tag enrolled on this laptop (NP-0042 -> NP-0043),
-    /// and asks again before reusing a tag that this laptop already enrolled on a different phone: the server would
-    /// move that tag's record (and its history) onto this phone.
+    /// and checks with the server that no other phone already carries it, whichever laptop enrolled that one. The
+    /// server refuses a taken tag anyway (a second phone must never take over another phone's record and history);
+    /// asking first keeps the phone from ending up unregistered.
     /// </summary>
     static string AskAssetTag(Phone phone)
     {
@@ -295,12 +296,19 @@ static class Program
             if (tag == "") tag = suggestion;
             assetTagArg = "";
 
-            var other = history.LastOrDefault(h => h.tag.Equals(tag, StringComparison.OrdinalIgnoreCase) && h.serial != phone.Serial);
-            if (other.tag == null || once) return tag;
-            Say($"{tag} was already enrolled on another phone (serial {other.serial}) from this laptop.", ConsoleColor.Yellow);
-            Console.Write($"Move {tag} to this phone? Only do this if the label was moved. Type Y to confirm, Enter to pick another tag: ");
-            if ((Console.ReadLine() ?? "").Trim().StartsWith("y", StringComparison.OrdinalIgnoreCase)) return tag;
-            suggestion = NextTag(history.LastOrDefault().tag);
+            var (status, body) = PostJson(server + "/api/device/v1/enrollment-code/check",
+                $"{{\"enrollment_token\":\"{code}\",\"asset_tag\":\"{tag}\",\"serial\":\"{phone.Serial}\"}}");
+            var takenBy = status == 200 ? JsonField(body, "tag_taken_by") : null;
+            if (takenBy == null)
+            {
+                if (status != 200)
+                    Say($"    Could not check the tag with the server (HTTP {status}); the server still refuses a tag another phone has.", ConsoleColor.Yellow);
+                return tag;
+            }
+            Say($"{tag} is already used by another phone ({takenBy}). Each phone needs its own tag.", ConsoleColor.Yellow);
+            Say("    Type another tag. To reuse this one, first remove the old phone on the admin site.", ConsoleColor.Gray);
+            if (once) throw new EnrollException($"Asset tag {tag} is already used by another phone ({takenBy}).");
+            suggestion = NextTag(tag);
         }
     }
 

@@ -98,6 +98,9 @@ IF SOMETHING GOES WRONG
 "Allow USB debugging?" never  Developer options > Revoke USB debugging authorizations,
  appears                      then unplug and plug back in.
 "has 1 account(s)"            Someone signed in during setup. Factory reset and skip sign-ins.
+"already used by another      That label is on another phone already (any laptop). Type the
+ phone"                       tag on THIS phone's label. If the label really moved, remove the
+                              old phone on the admin site first.
 "Another app manages this     The phone belongs to another MDM. Factory reset it.
  phone"
 "set-device-owner failed"     Factory reset, skip as much of setup as possible, try again.

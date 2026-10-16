@@ -65,6 +65,33 @@ class DeviceApiTest extends TestCase
         $this->assertSame(Device::STATE_ENROLLED, $pending->fresh()->state);
     }
 
+    public function test_a_second_phone_cannot_take_an_asset_tag_already_in_use(): void
+    {
+        $code = $this->code();
+        $first = $this->enroll($code, 'NPS-001', 'SERIAL-A')->assertCreated()->json('device_token');
+
+        $this->enroll($code, 'NPS-001', 'SERIAL-B')->assertStatus(409)
+            ->assertJson(['message' => 'Asset tag NPS-001 is already used by another phone (serial SERIAL-A).']);
+        $this->enroll($code, 'nps-001', 'SERIAL-B')->assertStatus(409); // labels typed in another case too
+
+        $this->assertSame('SERIAL-A', Device::where('asset_tag', 'NPS-001')->sole()->serial);
+        $this->withToken($first)->postJson('/api/device/v1/checkin')->assertOk(); // the first phone is untouched
+        $this->enroll($code, 'NPS-001', 'SERIAL-A')->assertCreated(); // the same phone may re-enroll under its tag
+    }
+
+    public function test_the_tool_learns_a_tag_is_taken_before_touching_the_phone(): void
+    {
+        $code = $this->code();
+        $this->enroll($code, 'NPS-001', 'SERIAL-A')->assertCreated();
+
+        $this->postJson('/api/device/v1/enrollment-code/check', ['enrollment_token' => $code, 'asset_tag' => 'NPS-001', 'serial' => 'SERIAL-B'])
+            ->assertOk()->assertJsonPath('tag_taken_by', fn ($v) => str_contains($v, 'serial SERIAL-A'));
+        $this->postJson('/api/device/v1/enrollment-code/check', ['enrollment_token' => $code, 'asset_tag' => 'NPS-002', 'serial' => 'SERIAL-B'])
+            ->assertOk()->assertJsonPath('tag_taken_by', null);
+        $this->postJson('/api/device/v1/enrollment-code/check', ['enrollment_token' => $code, 'asset_tag' => 'NPS-001', 'serial' => 'SERIAL-A'])
+            ->assertOk()->assertJsonPath('tag_taken_by', null);
+    }
+
     public function test_wrong_used_up_or_expired_codes_are_refused(): void
     {
         $this->enroll('NPE-WRONG')->assertUnauthorized();

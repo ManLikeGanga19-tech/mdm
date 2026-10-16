@@ -182,7 +182,7 @@ Ingest endpoints are idempotent on a client-generated `batch_uuid`: validate, st
 
 ## 9. Phases and acceptance criteria
 
-**Where we are (2026-10-16, v1.0.0):** Phases 1–5 are delivered in practice (USB enrollment instead of QR, see §3;
+**Where we are (2026-10-16, v1.0.1):** Phases 1–5 are delivered in practice (USB enrollment instead of QR, see §3;
 alert emails wait for Zoho SMTP details). Phase 6 is under way: deployed on the Contabo VPS with backups and
 retention; first RugKing in the field; rollout to the remaining phones from 2026-10-17. Still open: agent self-update
 (phones are updated by plugging them into the enrollment tool), Zoho alert emails, signed staff device-use policy.

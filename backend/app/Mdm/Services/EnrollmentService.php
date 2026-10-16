@@ -52,8 +52,12 @@ class EnrollmentService
         return DB::transaction(function () use ($token, $info) {
             $token = EnrollmentToken::query()->lockForUpdate()->findOrFail($token->id);
             abort_unless($token->uses < $token->max_uses && $token->expires_at->isFuture(), 401, 'Enrollment code used up or expired.');
+            // Never let a second phone take over another phone's record (and history) through a reused label.
+            if ($other = $this->tagConflict($info['asset_tag'], $info['serial'] ?? null)) {
+                abort(409, "Asset tag {$other->asset_tag} is already used by another phone (serial {$other->serial}).");
+            }
 
-            $device = Device::query()->where('asset_tag', $info['asset_tag'])->first()
+            $device = Device::query()->whereRaw('lower(asset_tag) = ?', [mb_strtolower(trim($info['asset_tag']))])->first()
                 ?? (filled($info['serial'] ?? null) ? Device::query()->where('serial', $info['serial'])->first() : null)
                 ?? new Device(['asset_tag' => $info['asset_tag']]);
 
@@ -84,6 +88,18 @@ class EnrollmentService
 
             return [$device, $credential];
         });
+    }
+
+    /**
+     * The phone that already carries $assetTag (ignoring case), if it is a different physical phone: its record has a
+     * serial and it isn't $serial. A record without a serial (pre-registered on the admin site) can be claimed, and
+     * the same phone can re-enroll under its own tag.
+     */
+    public function tagConflict(string $assetTag, ?string $serial): ?Device
+    {
+        $holder = Device::query()->whereRaw('lower(asset_tag) = ?', [mb_strtolower(trim($assetTag))])->first();
+
+        return $holder && filled($holder->serial) && $holder->serial !== $serial ? $holder : null;
     }
 
     public static function hash(string $secret): string

@@ -49,7 +49,7 @@ class AppsRelationManager extends RelationManager
             ])
             ->filters([
                 TernaryFilter::make('system')->label('Built-in apps')
-                    ->queries(true: fn (Builder $q) => $q->where('system', true), false: fn (Builder $q) => $q->where('system', false)),
+                    ->queries(true: fn (Builder $query) => $query->where('system', true), false: fn (Builder $query) => $query->where('system', false)),
             ])
             ->recordActions([
                 Action::make('block')

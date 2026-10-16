@@ -4,6 +4,7 @@ namespace App\Mdm\Services;
 
 use App\Mdm\Models\AppInventory;
 use App\Mdm\Models\Device;
+use App\Mdm\Models\IngestBatch;
 use App\Mdm\Models\NetworkLog;
 use App\Mdm\Models\UsageSample;
 use Illuminate\Support\Carbon;
@@ -20,7 +21,7 @@ class UsageReport
 {
     public const TETHERING = '__tethering__';
 
-    public function __construct(private WorkClassifier $work) {}
+    public function __construct(private WorkClassifier $work, private BackgroundTraffic $background) {}
 
     /** @return Collection<int, array{hour: Carbon, mobile: int, wifi: int, hotspot: int}> hourly totals */
     public function hourly(Device $device, Carbon $from, Carbon $to): Collection
@@ -76,7 +77,7 @@ class UsageReport
     /**
      * Per site and app: lookups and ESTIMATED bytes (see class doc), with work classification.
      *
-     * @return Collection<int, array{host: string, package: ?string, label: string, lookups: int, bytes: int, work: bool, work_label: ?string}>
+     * @return Collection<int, array{host: string, package: ?string, label: string, lookups: int, bytes: int, work: bool, work_label: ?string, background: bool}>
      */
     public function sites(Device $device, Carbon $from, Carbon $to): Collection
     {
@@ -108,12 +109,25 @@ class UsageReport
 
         return collect($estimated)
             ->map(fn (array $site) => $site + [
-                'label' => $labels[$site['package']] ?? $site['package'] ?? 'Unknown app',
+                'label' => $labels[$site['package']] ?? ($site['package'] ? $this->sentinelLabel($site['package']) : 'Unknown app'),
                 'work' => $this->work->isWorkHost($site['host']) || $this->work->isWorkApp($site['package']),
                 'work_label' => $this->work->labelFor($site['package'], $site['host']),
+                'background' => $this->background->isBackground($site['host'], $site['package']),
             ])
             ->sortByDesc(fn (array $s) => [$s['bytes'], $s['lookups']])
             ->values();
+    }
+
+    /**
+     * When the phone last sent website records, for the admin site. Android hands them to the agent in batches about
+     * every 1.5 hours (sooner on a busy phone), so the latest browsing is often not on the server yet.
+     */
+    public function websiteFreshness(Device $device): string
+    {
+        $last = IngestBatch::query()->where('device_id', $device->id)->where('kind', 'network_logs')->max('received_at');
+        $when = $last ? Carbon::parse($last)->setTimezone(config('app.display_timezone'))->format('d M H:i') : 'never';
+
+        return "Last website records from this phone: {$when}. Android sends them about every 1.5 hours, so the latest browsing can take that long to appear.";
     }
 
     /** @return array{total: int, work: int} */
@@ -150,6 +164,8 @@ class UsageReport
             $package === self::TETHERING => 'Hotspot (shared with other devices)',
             $package === '__removed__' => 'Uninstalled apps',
             str_starts_with($package, 'android.uid.system') => 'Android system',
+            str_starts_with($package, 'android.uid.networkstack') => 'Android connection check',
+            str_starts_with($package, 'com.google.uid.shared') => 'Google Play services',
             str_starts_with($package, '__uid_') => 'Android system',
             default => $package,
         };

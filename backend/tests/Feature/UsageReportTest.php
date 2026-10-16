@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Filament\Resources\Devices\Pages\ViewDevice;
 use App\Filament\Resources\Devices\RelationManagers\AppsRelationManager;
+use App\Filament\Resources\Devices\RelationManagers\NetworkLogsRelationManager;
 use App\Filament\Resources\Devices\Widgets\DeviceBatteryChart;
 use App\Filament\Resources\Devices\Widgets\DeviceTopApps;
 use App\Filament\Resources\Devices\Widgets\DeviceTopSites;
@@ -136,5 +137,42 @@ class UsageReportTest extends TestCase
         Livewire::test(DeviceTopApps::class, ['record' => $this->device])->assertSee('com.android.chrome');
         Livewire::test(DeviceUsageChart::class, ['record' => $this->device])->assertOk();
         Livewire::test(DeviceBatteryChart::class, ['record' => $this->device])->assertOk();
+    }
+
+    public function test_phone_housekeeping_is_hidden_until_asked_for(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => Role::SuperAdmin]));
+        WorkRule::create(['kind' => 'domain', 'pattern' => 'noahport.co.ke', 'label' => 'Company PWA']);
+        $hour = now()->subHour()->startOfHour();
+        $this->sample('com.android.vending', 90_000_000, $hour->toDateTimeString());
+        $this->sample('com.android.chrome', 2_000_000, $hour->toDateTimeString());
+        $this->lookup('com.android.vending', 'play.googleapis.com', $hour->copy()->addMinutes(5)->toDateTimeString());
+        $this->lookup('com.android.chrome', 'beacons2.gvt2.com', $hour->copy()->addMinutes(6)->toDateTimeString());
+        $this->lookup('com.android.chrome', 'www.baze.co.ke', $hour->copy()->addMinutes(7)->toDateTimeString());
+        $this->lookup('com.android.chrome', 'app.noahport.co.ke', $hour->copy()->addMinutes(8)->toDateTimeString());
+        $this->lookup('com.google.uid.shared:10144', 'www.example.com', $hour->copy()->addMinutes(9)->toDateTimeString());
+
+        $sites = app(UsageReport::class)->sites($this->device, now()->subDay(), now())->keyBy('host');
+        $this->assertTrue($sites['play.googleapis.com']['background']);
+        $this->assertTrue($sites['beacons2.gvt2.com']['background']);
+        $this->assertTrue($sites['www.example.com']['background']);
+        $this->assertSame('Google Play services', $sites['www.example.com']['label']);
+        $this->assertFalse($sites['www.baze.co.ke']['background']);
+        $this->assertFalse($sites['app.noahport.co.ke']['background']);
+
+        Livewire::test(DeviceTopSites::class, ['record' => $this->device])
+            ->assertSee('www.baze.co.ke')->assertDontSee('play.googleapis.com')
+            ->call('$set', 'showBackground', true)
+            ->assertSee('play.googleapis.com');
+
+        Livewire::test(NetworkLogsRelationManager::class, ['ownerRecord' => $this->device, 'pageClass' => ViewDevice::class])
+            ->assertSee('www.baze.co.ke')->assertSee('app.noahport.co.ke')
+            ->assertDontSee('beacons2.gvt2.com')->assertDontSee('www.example.com')
+            ->assertSee('Last website records from this phone: never')
+            ->filterTable('today')->assertSee('www.baze.co.ke')
+            ->call('$set', 'showBackground', true)->assertSee('beacons2.gvt2.com');
+
+        Livewire::test(AppsRelationManager::class, ['ownerRecord' => $this->device, 'pageClass' => ViewDevice::class])
+            ->filterTable('system', false)->assertOk();
     }
 }

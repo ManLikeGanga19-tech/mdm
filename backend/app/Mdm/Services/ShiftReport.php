@@ -119,7 +119,7 @@ class ShiftReport
         }
 
         $battery = $this->battery($device, $start, $end);
-        $topSite = $this->usage->sites($device, $start, $end)->first();
+        $topSite = $this->usage->sites($device, $start, $end)->firstWhere('background', false);
 
         if ($segments === []) {
             $segments[0] = ['clerk' => $this->handovers->holderAt($device, $start->copy()->addHour()), 'total' => 0, 'work' => 0,

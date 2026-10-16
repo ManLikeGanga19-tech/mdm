@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Mdm\Models\AdminRole;
+use App\Mdm\Models\Crew;
 use App\Mdm\Permission;
 use App\Mdm\Role;
 use Database\Factories\UserFactory;
@@ -16,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'role', 'role_id', 'disabled_at', 'invited_at'])]
+#[Fillable(['name', 'email', 'password', 'role', 'role_id', 'crew_id', 'disabled_at', 'invited_at'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser
 {
@@ -42,6 +43,12 @@ class User extends Authenticatable implements FilamentUser
     public function role(): BelongsTo
     {
         return $this->belongsTo(AdminRole::class, 'role_id');
+    }
+
+    /** The crew this account coordinates (shift coordinators only). */
+    public function crew(): BelongsTo
+    {
+        return $this->belongsTo(Crew::class);
     }
 
     /** Lets code and tests set a role by its built-in key: User::create([..., 'role' => Role::Manager]). */

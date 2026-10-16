@@ -7,6 +7,7 @@ use App\Mdm\Models\Clerk;
 use App\Mdm\Permission;
 use BackedEnum;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
@@ -14,6 +15,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
@@ -53,6 +55,8 @@ class ClerkResource extends Resource
         return $schema->components([
             TextInput::make('staff_number')->label('Staff number')->required()->maxLength(40)->unique(ignoreRecord: true),
             TextInput::make('name')->required()->maxLength(120),
+            Select::make('crew_id')->label('Crew')->relationship('crew', 'name')->placeholder('No crew')
+                ->helperText('The crew this clerk works with; its coordinators give them phones.'),
             Toggle::make('active')->default(true)->helperText('Inactive clerks are hidden from the handover list.'),
         ]);
     }
@@ -65,11 +69,13 @@ class ClerkResource extends Resource
             ->columns([
                 TextColumn::make('staff_number')->label('Staff number')->searchable()->sortable(),
                 TextColumn::make('name')->searchable()->sortable(),
+                TextColumn::make('crew.name')->label('Crew')->badge()->placeholder('-')->sortable(),
                 TextColumn::make('currentAssignment.device.asset_tag')->label('Holding')->placeholder('-'),
                 IconColumn::make('active')->boolean(),
             ])
             ->filters([
                 TernaryFilter::make('active'),
+                SelectFilter::make('crew_id')->label('Crew')->relationship('crew', 'name'),
             ])
             ->recordActions([
                 EditAction::make(),

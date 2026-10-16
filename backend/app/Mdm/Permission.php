@@ -16,6 +16,7 @@ enum Permission: string
     case HandoverRecord = 'handover.record';
     case HandoverRelease = 'handover.release';
     case ClerksManage = 'clerks.manage';
+    case RosterManage = 'roster.manage';
     case SetupManage = 'setup.manage';
     case EnrollmentManage = 'enrollment.manage';
     case ReportsView = 'reports.view';
@@ -35,6 +36,7 @@ enum Permission: string
             self::HandoverRecord => 'Record shift handovers',
             self::HandoverRelease => 'Release a handover lock',
             self::ClerksManage => 'Add and edit clerks (incl. CSV import)',
+            self::RosterManage => 'Manage crews and the shift roster',
             self::SetupManage => 'Change groups & rules, work sites & apps, shifts & peak hours',
             self::EnrollmentManage => 'Create and disable enrollment codes',
             self::ReportsView => 'View the shift report',
@@ -49,7 +51,7 @@ enum Permission: string
     {
         return match ($this) {
             self::FleetView, self::PhonesControl, self::PhonesErase, self::PhonesRules, self::LiveView => 'Phones',
-            self::HandoverRecord, self::HandoverRelease, self::ClerksManage => 'Shifts',
+            self::HandoverRecord, self::HandoverRelease, self::ClerksManage, self::RosterManage => 'Shifts',
             self::SetupManage, self::EnrollmentManage => 'Setup',
             self::ReportsView, self::WebsitesView => 'Reports',
             self::AuditView, self::AccountsManage, self::RolesManage => 'Administration',

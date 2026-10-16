@@ -77,6 +77,7 @@ class UserResource extends Resource
                 TextColumn::make('name')->searchable(),
                 TextColumn::make('email')->searchable(),
                 TextColumn::make('role.name')->label('Role')->badge(),
+                TextColumn::make('crew.name')->label('Crew')->placeholder('-'),
                 TextColumn::make('status')
                     ->state(fn (User $record) => match (true) {
                         $record->isDisabled() => 'Disabled',

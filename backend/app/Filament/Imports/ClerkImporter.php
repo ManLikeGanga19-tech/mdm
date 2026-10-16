@@ -8,7 +8,7 @@ use Filament\Actions\Imports\Importer;
 use Filament\Actions\Imports\Models\Import;
 use Illuminate\Support\Number;
 
-/** Loads clerks from the company's staff spreadsheet (CSV: staff_number, name[, active]). Re-importing updates by staff number. */
+/** Loads clerks from the company's staff spreadsheet (CSV: staff_number, name[, crew][, active]; crew by name, e.g. "Crew 2"). Re-importing updates by staff number. */
 class ClerkImporter extends Importer
 {
     protected static ?string $model = Clerk::class;
@@ -26,6 +26,11 @@ class ClerkImporter extends Importer
                 ->guess(['full name', 'clerk', 'employee', 'names'])
                 ->requiredMapping()
                 ->rules(['required', 'max:120']),
+            ImportColumn::make('crew')
+                ->label('Crew')
+                ->guess(['crew', 'team', 'crew name'])
+                ->relationship(resolveUsing: 'name')
+                ->rules(['nullable']),
             ImportColumn::make('active')
                 ->label('Active')
                 ->boolean()

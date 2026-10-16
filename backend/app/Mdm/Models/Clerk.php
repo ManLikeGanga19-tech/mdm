@@ -4,11 +4,12 @@ namespace App\Mdm\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /** A clerk who uses the shared shift phones. Imported from the company's staff spreadsheet. */
-#[Fillable(['staff_number', 'name', 'active'])]
+#[Fillable(['staff_number', 'name', 'crew_id', 'active'])]
 class Clerk extends Model
 {
     protected $table = 'mdm_clerks';
@@ -16,6 +17,11 @@ class Clerk extends Model
     protected function casts(): array
     {
         return ['active' => 'boolean'];
+    }
+
+    public function crew(): BelongsTo
+    {
+        return $this->belongsTo(Crew::class);
     }
 
     public function assignments(): HasMany

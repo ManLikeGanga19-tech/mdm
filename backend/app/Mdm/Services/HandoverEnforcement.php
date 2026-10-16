@@ -3,6 +3,8 @@
 namespace App\Mdm\Services;
 
 use App\Mdm\Models\AuditLog;
+use App\Mdm\Models\CrewHandover;
+use App\Mdm\Models\CrewHandoverItem;
 use App\Mdm\Models\Device;
 use App\Mdm\Models\DeviceAssignment;
 use App\Mdm\Models\Shift;
@@ -53,7 +55,16 @@ class HandoverEnforcement
             return false;
         }
 
-        return ! DeviceAssignment::query()
+        // Handed over = received by the incoming crew in this window's crew handover, or given to a clerk since the
+        // window opened (early handovers count).
+        $receivedByCrew = CrewHandoverItem::query()
+            ->where('device_id', $device->id)
+            ->where('received', true)
+            ->whereHas('handover', fn ($q) => $q->where('shift_id', $window['shift']->id)->whereDate('date', $window['date'])
+                ->whereIn('status', [CrewHandover::ACCEPTED, CrewHandover::DISPUTED]))
+            ->exists();
+
+        return ! $receivedByCrew && ! DeviceAssignment::query()
             ->where('device_id', $device->id)
             ->where('started_at', '>=', $window['start']->copy()->subMinutes(ShiftReport::EARLY_GRACE_MINUTES))
             ->exists();

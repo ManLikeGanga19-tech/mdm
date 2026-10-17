@@ -41,6 +41,7 @@ Run from the repo root (Docker; no local PHP):
 - Run tests: `docker compose exec app php artisan test` (Postgres database `mdm_test`)
 - Lint/format: `docker compose exec app vendor/bin/pint app tests database config` (ktlint for the agent: not set up yet)
 - Agent release + enrollment tool: `cd agent-app && scripts/make-enroll-kit.sh` (Git Bash; release key required). Fleet phones get only this release build; `assembleDebug` is for the emulator/test bench
+- B0 USSD probe (test tool, not for staff): `cd agent-app && ./gradlew :ussd-probe:assembleDebug` → `ussd-probe/build/outputs/apk/debug/`
 - Remove test phones (dry run unless `--force`): `php artisan mdm:remove-devices <asset tag>...`
 - Check the mail server settings (sends one email now): `php artisan mdm:mail-test <email>`
 - Production deploy: `ssh -i ~/.ssh/wifios_vps deploy@94.72.102.13 /opt/noahport-mdm/deploy/deploy.sh`

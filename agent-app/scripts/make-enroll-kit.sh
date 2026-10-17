@@ -13,7 +13,7 @@ sdk="${ANDROID_HOME:-$LOCALAPPDATA/Android/Sdk}"
 export JAVA_HOME="${JAVA_HOME:-/c/Program Files/Android/Android Studio/jbr}"
 apksigner="$(ls -d "$sdk"/build-tools/* | sort -V | tail -1)/apksigner.bat"
 
-./gradlew assembleRelease --console=plain -q
+./gradlew :app:assembleRelease --console=plain -q # the agent only, not the ussd-probe test tool
 apk="$PWD/app/build/outputs/apk/release/app-release.apk"
 meta=app/build/outputs/apk/release/output-metadata.json
 

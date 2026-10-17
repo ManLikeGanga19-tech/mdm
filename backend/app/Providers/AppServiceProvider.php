@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Mdm\Notifications\ForgotPassword;
 use App\Models\User;
+use Filament\Auth\Notifications\ResetPassword;
 use Filament\Support\Facades\FilamentTimezone;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -18,7 +20,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // "Forgot password?" emails in our wording (Filament makes them with app(ResetPassword::class, ...)).
+        $this->app->bind(ResetPassword::class, ForgotPassword::class);
     }
 
     /**

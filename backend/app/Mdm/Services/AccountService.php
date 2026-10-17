@@ -4,6 +4,9 @@ namespace App\Mdm\Services;
 
 use App\Mdm\Models\AdminRole;
 use App\Mdm\Models\AuditLog;
+use App\Mdm\Notifications\AccountEmail;
+use App\Mdm\Notifications\AccountInvite;
+use App\Mdm\Notifications\SetPasswordLink;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\DB;
@@ -15,11 +18,12 @@ use RuntimeException;
  * Admin-site accounts: invite, set-password links, disable/enable, role changes. The one hard rule: there is always
  * at least one active super admin, so nobody can lock the company out of its own MDM. Every change is audited.
  * Set-password links use Laravel's password broker and Filament's reset page; they last 48 hours (config/auth.php).
+ * Once the site has a mail server the links are also emailed to the person (AccountEmail::canSend()).
  */
 class AccountService
 {
     /**
-     * Creates the account with no usable password and returns a set-password link to give to the person.
+     * Creates the account with no usable password, emails the person a set-password link and returns it too.
      *
      * @return array{user: User, link: string}
      */
@@ -33,8 +37,12 @@ class AccountService
             'invited_at' => now(),
         ]);
         AuditLog::record('account.invited', $user, ['email' => $user->email, 'role' => $role->name]);
+        $link = $this->setPasswordLink($user);
+        if (AccountEmail::canSend()) {
+            $user->notify(new AccountInvite($link, auth()->user()?->name));
+        }
 
-        return ['user' => $user, 'link' => $this->setPasswordLink($user)];
+        return ['user' => $user, 'link' => $link];
     }
 
     /** A one-time link to choose a password (48 h). Making a new one cancels the previous one. */
@@ -45,13 +53,17 @@ class AccountService
         return Filament::getPanel('admin')->getResetPasswordUrl($token, $user);
     }
 
-    /** Replaces the password with an unknown one (signing the person out) and returns a link to choose a new one. */
+    /** Replaces the password with an unknown one (signing the person out); emails and returns a link to choose a new one. */
     public function resetPassword(User $user): string
     {
         $user->forceFill(['password' => Str::random(64), 'remember_token' => Str::random(60)])->save();
         AuditLog::record('account.password_reset', $user, ['email' => $user->email]);
+        $link = $this->setPasswordLink($user);
+        if (AccountEmail::canSend()) {
+            $user->notify(new SetPasswordLink($link));
+        }
 
-        return $this->setPasswordLink($user);
+        return $link;
     }
 
     public function disable(User $user): void

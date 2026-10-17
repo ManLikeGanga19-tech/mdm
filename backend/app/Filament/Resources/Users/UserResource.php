@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Users;
 
 use App\Filament\Resources\Users\Pages\ManageUsers;
 use App\Mdm\Models\AdminRole;
+use App\Mdm\Notifications\AccountEmail;
 use App\Mdm\Permission;
 use App\Mdm\Services\AccountService;
 use App\Models\User;
@@ -106,7 +107,9 @@ class UserResource extends Resource
                         ->label('New set-password link')
                         ->icon(Heroicon::OutlinedLink)
                         ->requiresConfirmation()
-                        ->modalDescription('Their current password stops working and they are signed out. You get a link (valid 48 hours) to send them; they choose a new password with it.')
+                        ->modalDescription(fn () => 'Their current password stops working and they are signed out. '.(AccountEmail::canSend()
+                            ? 'They get an email with a link (valid 48 hours) to choose a new password; you see the link too.'
+                            : 'You get a link (valid 48 hours) to send them; they choose a new password with it.'))
                         ->action(fn (User $record) => self::showLink($record, app(AccountService::class)->resetPassword($record))),
                     Action::make('disable')
                         ->icon(Heroicon::OutlinedNoSymbol)
@@ -126,12 +129,14 @@ class UserResource extends Resource
             ]);
     }
 
-    /** Shows a set-password link to copy (until mail is set up, the admin sends it to the person). */
+    /** Shows the set-password link: emailed to the person when the site has mail, else for the admin to send. */
     public static function showLink(User $user, string $link): void
     {
+        $emailed = AccountEmail::canSend();
         Notification::make()
-            ->title("Set-password link for {$user->name}")
-            ->body("Send this to {$user->email}. It works once, for 48 hours:\n\n{$link}")
+            ->title($emailed ? "Set-password link emailed to {$user->email}" : "Set-password link for {$user->name}")
+            ->body(($emailed ? "If it doesn't arrive (ask them to check spam), send them this link instead." : "Send this to {$user->email}.")
+                ." It works once, for 48 hours:\n\n{$link}")
             ->success()
             ->persistent()
             ->send();

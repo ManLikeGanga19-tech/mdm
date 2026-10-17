@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Users\Pages;
 
 use App\Filament\Resources\Users\UserResource;
 use App\Mdm\Models\AdminRole;
+use App\Mdm\Notifications\AccountEmail;
 use App\Mdm\Role;
 use App\Mdm\Services\AccountService;
 use Filament\Actions\Action;
@@ -22,7 +23,9 @@ class ManageUsers extends ManageRecords
             Action::make('invite')
                 ->label('Invite')
                 ->icon(Heroicon::OutlinedUserPlus)
-                ->modalDescription('The account is created without a password. You get a link (valid 48 hours) to send them; they choose their own password with it.')
+                ->modalDescription(fn () => 'The account is created without a password. '.(AccountEmail::canSend()
+                    ? 'They get an email with a link (valid 48 hours) to choose their own password; you see the link too.'
+                    : 'You get a link (valid 48 hours) to send them; they choose their own password with it.'))
                 ->schema([
                     TextInput::make('name')->required()->maxLength(120),
                     TextInput::make('email')->email()->required()->unique('users', 'email'),

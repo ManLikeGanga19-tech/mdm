@@ -2,7 +2,7 @@
 
 Read this, `CLAUDE.md`, and `docs/ARCHITECTURE.md` before starting work. Update it at the end of every session.
 
-_Last updated: 2026-10-17 (v1.0.1 release published; production clean for the rollout)_
+_Last updated: 2026-10-17 (account emails built, waiting on Zoho details; v1.0.1 in production)_
 
 ## Current state (v1.0.1, 2026-10-16)
 **Production-ready; rollout to the remaining RugKings starts 2026-10-17.** Live at
@@ -25,7 +25,7 @@ invite the coordinators, create Crew 1–3, set clerks'
 crews, generate the roster. Not yet tested in the field: a full crew handover at a real shift change (covered by
 tests incl. the night → morning one across midnight).
 
-Next after rollout: Zoho SMTP (invite/reset/alert emails), agent self-update, alert rules, 24 h soak report on a
+Email phase approved 2026-10-17 (steps: 1 Zoho SMTP, 2 account emails **built, not deployed**, 3 alert rules + emails with new tables `mdm_alert_rules`/`mdm_alerts`). Then: agent self-update, 24 h soak report on a
 RugKing, Play Protect allowlist (D-U-N-S) for QR enrollment.
 
 ## Decisions made
@@ -78,7 +78,8 @@ http://localhost:8080/admin (or http://<PC LAN IP>:8080/admin from a phone on th
 
 ## Waiting on the user
 - [ ] Back up the release key: `release.jks` to OneDrive **Personal Vault** + a second cloud copy, password stored separately. Losing it means re-enrolling every phone
-- [ ] Zoho SMTP details (host, port, mailbox, app password) so invites, resets and alerts are emailed
+- [ ] Zoho SMTP details: account region (zoho.com/.eu/.in), sending mailbox, app-specific password (user puts it in the VPS `.env`); then `php artisan mdm:mail-test <email>`
+- [ ] Step 3 alert choices: which alerts first, thresholds, recipients
 - [ ] Rollout setup on the admin site: invite 6 coordinators, Crews 1–3, clerks' crews (or CSV with a `crew` column), Generate rotation
 - [ ] Turn the Shift phones handover lock off until crews/roster exist, or record a handover right after enrolling each phone
 - [ ] Asset tags of the remaining RugKings (the tool suggests the next tag)
@@ -117,3 +118,4 @@ http://localhost:8080/admin (or http://<PC LAN IP>:8080/admin from a phone on th
 - 2026-10-16 (v1.0.0, rollout prep): user confirmed real-time actions on both phones and the live console (apps ~10 s old). More tests: night → morning crew handover across midnight, night crew's slot after midnight, super admin acting for both sides, clerk picker limited to the crew, `mdm:remove-devices` (dry run by default, `--force` deletes the phone with its cascaded history, audited). Debug vs release verified: kit APK and the Neon's agent are not debuggable; `make-enroll-kit.sh` now refuses a debuggable APK. Agent/NoahportEnroll **1.0.0** built (same permanent cert), Neon upgraded 0.11.0 -> 1.0.0 with the tool (still device owner, allowlisted, service back ~3 s after the update). Old 0.x tools moved to `OneDrive/Noahport/enroll-kit/superseded/`. Lint: 5 known warnings (SDK 37 / WorkManager 2.12 available, dataExtractionRules, debug-screen text), deliberately not changed before the rollout. README written; ARCHITECTURE (real-time channel, live view, crews/roster/handover, roles, endpoints, env, status), deploy/README (hub, re-run note, removing test phones) and this file curated. Release: tag `v1.0.0` as a full GitHub release (exe + APK + SHA-256) and remove the temporary `spike-apk` pre-release; needs the GitHub CLI logged in on this PC (`winget install GitHub.cli`, `gh auth login`).
 - 2026-10-16 (v1.0.1, duplicate asset tags): a second phone enrolling with a tag another phone already carries (any letter case) is refused with 409 instead of taking over that phone's record and history (`EnrollmentService::tagConflict`: a record with a different serial; pre-registered records without a serial can still be claimed, the same phone can re-enroll). `enrollment-code/check` takes asset_tag + serial and returns `tag_taken_by`; NoahportEnroll 1.0.1 asks the server before touching the phone and makes the user type another tag (replaces the laptop-only history prompt). Agent unchanged apart from the version (1.0.1 so the tool and agent versions match). 93 tests pass. v1.0.0 tag stays; v1.0.1 is the release to publish. 1.0.0 tool moved to `superseded/`.
 - 2026-10-17 (rollout morning): GitHub release **v1.0.1** published (Latest; https://github.com/ManLikeGanga19-tech/mdm/releases/tag/v1.0.1) with `NoahportEnroll-1.0.1.exe`, `noahport-mdm-agent-1.0.1.apk` (release-signed, identical to the APK embedded in the exe), `README.txt`, `SHA256SUMS.txt`; downloads re-verified against the checksums. `app-debug.apk` deliberately not published (debug key: phones enrolled with it can't take release updates; fleet gets release only). The exe's ProductVersion stamp names 8a36f27 because it was built just before the v1.0.1 commit; it contains the 1.0.1 tag check and the 1.0.1 APK. gh CLI now logged in on this PC (ManLikeGanga19-tech). Production cleanup (user-requested, audited as `enrollment_code.uses_reset` and `clerk.deleted`): code "RugKing pilot rollout" uses 1 -> 0 (6 left), test clerk Cephas Mwendwa deleted; shifts kept (configuration used by handover lock, roster and reports). Enrollment codes are stored hashed: a lost code can't be recovered, only replaced. Not yet tested: NoahportEnroll on the company laptop itself.
+- 2026-10-17 (Email phase, step 2: account emails; approved, not deployed): plan approved (1 Zoho SMTP, 2 account emails, 3 alert rules + emails incl. new tables). Built step 2 while the user gets the Zoho details: `App\Mdm\Notifications` — `AccountEmail` base (queued via Horizon; `canSend()` = `MAIL_MAILER` not `log`; disabled accounts get nothing), `AccountInvite` (who invited, role, 48 h link), `SetPasswordLink` ("New set-password link"), `ForgotPassword` (bound over Filament's `ResetPassword` in `AppServiceProvider`, same wording). `AccountService::invite`/`resetPassword` email the link when mail is on; the Accounts page still shows the link as a backup ("emailed to …; if it doesn't arrive, send this"). "Forgot password?" sends the reset email once mail is on (until then: ask a super admin). New `php artisan mdm:mail-test <email>` sends one email immediately (not queued) so SMTP errors show. `AccountEmailsTest` (7); 100 tests pass. With `MAIL_MAILER=log` (production now) nothing changes. Gotcha for step 1: the From address must be the Zoho mailbox or a verified alias, else Zoho answers "553 Relaying disallowed".

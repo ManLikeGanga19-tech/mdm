@@ -219,6 +219,28 @@ Device list/detail, usage charts, inventory, network logs, alert rules, Zoho Mai
 Contabo deployment, TLS, backups (pg_dump offsite), monitoring, retention jobs, agent self-update, docs, signed staff
 policy, enroll remaining phones.
 
+**Future — Location and posts (after the full pilot; deferred by the user 2026-10-17)**
+Proposed design, not approved or built. Track phones by **zone and post**, not raw dots: GPS in the port drifts 10–40 m
+near container stacks and cranes, so the question answered is "is this phone at its post for this shift?".
+- *Map:* self-hosted MapLibre GL JS with one PMTiles file (OpenStreetMap extract of Mombasa/Kilindini) served from the
+  VPS: no tile server, API key or per-view fees. Our layers on top: port boundary and zones (berths, yards, gates,
+  sheds) drawn in an admin zone editor; optionally georeferenced KPA/Noahport site plans or a drone orthophoto.
+- *Posts:* clerk → post → shift, hung off the roster/crews. Compliance = share of the shift inside the post zone, with
+  a tolerance buffer (~25 m, set by the field test).
+- *Agent signals (cheap first):* on-device geofences for the phone's own post + port boundary (enter/exit events);
+  GPS breadcrumbs only during the clerk's rostered shift (~2 min moving, ~10 min still); connected Wi-Fi BSSID as a
+  zone hint where port Wi-Fi exists; optional Wi-Fi fingerprinting (scan limits: 4 per 2 min foreground, 1 per 30
+  min for all background apps); on-demand live tracking via the live view. Device owners on fully managed devices can
+  grant themselves fine/background location on Android 12+ (no sensor opt-out in our USB provisioning).
+- *Network-side option:* if port Wi-Fi is Cisco (WLC / Cisco Spaces), locate clients from the controller with no
+  battery cost; needs the factory MAC on the company SSID (device-owner control of MAC randomization: unverified).
+- *Server:* PostGIS (`postgis/postgis:16` image swap), tables `mdm_zones`, `mdm_posts`, `mdm_location_samples`,
+  `mdm_zone_events`; existing batched ingest; live map over Mercure. Alerts: away from post > N min, left the port.
+- *Privacy (Kenya DPA):* location only during the rostered shift, 30-day retention, staff notice + signed policy.
+- *Phases:* L0 one-day field test at real posts (accuracy, BSSIDs, battery) → L1 map, zone editor, posts →
+  L2 agent collection + live map → L3 compliance report + alerts.
+- *Open questions:* port Wi-Fi owner/vendor and AP list; list of posts and who assigns them; site plans/GIS files.
+
 ## 10. Directory layout
 ```
 backend/                 Laravel app

@@ -5,6 +5,7 @@ namespace App\Providers\Filament;
 use App\Filament\Auth\RequestPasswordReset;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\ShiftHandover;
+use App\Http\Controllers\LatestNotificationController;
 use App\Mdm\Permission;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
@@ -20,6 +21,7 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Route;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class AdminPanelProvider extends PanelProvider
@@ -48,6 +50,10 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->defaultThemeMode(ThemeMode::Light)
             ->databaseNotifications()
+            ->databaseNotificationsPolling('15s')
+            // New bell notifications pop up with a chime (speaker button next to the account menu mutes it).
+            ->renderHook(PanelsRenderHook::USER_MENU_BEFORE, fn () => view('filament.notification-chime'))
+            ->authenticatedRoutes(fn () => Route::get('notifications/latest', LatestNotificationController::class)->name('notifications.latest'))
             ->sidebarCollapsibleOnDesktop()
             // Lets the admin add the site to a phone's home screen like an app.
             ->renderHook(PanelsRenderHook::HEAD_END, fn () => view('filament.pwa-head'))

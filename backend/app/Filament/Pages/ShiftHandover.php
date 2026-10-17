@@ -50,6 +50,22 @@ class ShiftHandover extends Page implements HasTable
         return auth()->user()?->hasPermission(Permission::HandoverRecord) ?? false;
     }
 
+    /** A crew's coordinators see "My shift" first; anyone else (IT, managers) oversees every crew's "Shift handovers". */
+    public static function getNavigationLabel(): string
+    {
+        return auth()->user()?->crew_id ? 'My shift' : 'Shift handovers';
+    }
+
+    public static function getNavigationSort(): ?int
+    {
+        return auth()->user()?->crew_id ? 0 : 3;
+    }
+
+    public function getTitle(): string
+    {
+        return static::getNavigationLabel();
+    }
+
     protected function getViewData(): array
     {
         $user = auth()->user()->load('crew.coordinators');

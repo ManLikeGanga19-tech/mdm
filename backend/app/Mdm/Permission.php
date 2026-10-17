@@ -19,6 +19,7 @@ enum Permission: string
     case RosterManage = 'roster.manage';
     case SetupManage = 'setup.manage';
     case EnrollmentManage = 'enrollment.manage';
+    case AlertsManage = 'alerts.manage';
     case ReportsView = 'reports.view';
     case WebsitesView = 'websites.view';
     case AuditView = 'audit.view';
@@ -39,6 +40,7 @@ enum Permission: string
             self::RosterManage => 'Manage crews and the shift roster',
             self::SetupManage => 'Change groups & rules, work sites & apps, shifts & peak hours',
             self::EnrollmentManage => 'Create and disable enrollment codes',
+            self::AlertsManage => 'Change alert rules (what is emailed, to whom)',
             self::ReportsView => 'View the shift report',
             self::WebsitesView => 'View websites visited (website log, top sites)',
             self::AuditView => 'View the audit log',
@@ -52,7 +54,7 @@ enum Permission: string
         return match ($this) {
             self::FleetView, self::PhonesControl, self::PhonesErase, self::PhonesRules, self::LiveView => 'Phones',
             self::HandoverRecord, self::HandoverRelease, self::ClerksManage, self::RosterManage => 'Shifts',
-            self::SetupManage, self::EnrollmentManage => 'Setup',
+            self::SetupManage, self::EnrollmentManage, self::AlertsManage => 'Setup',
             self::ReportsView, self::WebsitesView => 'Reports',
             self::AuditView, self::AccountsManage, self::RolesManage => 'Administration',
         };

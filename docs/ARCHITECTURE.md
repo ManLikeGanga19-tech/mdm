@@ -120,8 +120,8 @@ Usage collection uses `NetworkStatsManager`. A device owner is expected to get d
 - `mdm_usage_samples`: id, device_id, package_name (NOT NULL; sentinels `__tethering__`, `__removed__`, `__uid_<n>__` for shared/unknown UIDs), network_type (`mobile`, `wifi`), rx_bytes, tx_bytes, period_start, period_end; unique (device_id, package_name, network_type, period_start)
 - `mdm_network_logs`: id, device_id, log_type (`dns`, `connect`), host, ip, port, package_name, occurred_at
 - `mdm_agent_releases`: id, version_code, version_name, apk_path, sha256, cert_checksum, is_current, created_at
-- `mdm_alert_rules`: id, name, metric, threshold, window, recipients, enabled
-- `mdm_alerts`: id, rule_id, device_id, value, triggered_at, notified_at, acknowledged_at
+- `mdm_alert_rules`: id, name, metric (`App\Mdm\AlertMetric`), threshold, window (day/week), group_id, recipient_role_ids, recipient_emails, enabled
+- `mdm_alerts`: id, rule_id, device_id (null for crew handovers), key (dedupe), value, message, triggered_at, notified_at, resolved_at, acknowledged_at, acknowledged_by
 - `mdm_audit_log`: id, actor_id, action, subject_type, subject_id, data (jsonb), created_at
 - `mdm_clerks`: id, staff_number (unique), name, crew_id, active — imported from the company staff spreadsheet
 - `mdm_device_assignments`: id, device_id, clerk_id, started_at, ended_at (null = holding it now), assigned_by, ended_by, note.
